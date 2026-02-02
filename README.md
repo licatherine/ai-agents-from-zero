@@ -8,7 +8,7 @@
 ![Language](https://img.shields.io/badge/language-Chinese-2ea44f?style=flat)
 ![Stars](https://img.shields.io/github/stars/didilili/ai-agents-from-zero?logo=github&style=flat)
 ![GitHub](https://img.shields.io/badge/GitHub-Project-181717?logo=github&logoColor=white)
-[![Read Online](https://img.shields.io/badge/在线阅读-点击访问-blue?logo=bookstack)]()
+[![Read Online](https://img.shields.io/badge/在线阅读-点击访问-blue?logo=bookstack)](https://didilili.github.io/ai-agents-from-zero/#/)
 
   <p>
     <a href="#-关于本仓库">仓库说明</a> •
@@ -17,22 +17,18 @@
     <a href="课程案例链接汇总.md">案例汇总</a> •
     <a href="#-技术栈概览">技术栈概览</a>
   </p>
-  
+  <p>
+    <a href="https://didilili.github.io/ai-agents-from-zero/#/">📚 在线阅读</a>
+  </p>
 </div>
 
 **📢 说明**：本仓库正在持续更新中，为 **2026 年最新版** 笔记与教程。若对你有帮助，欢迎 **Star** ⭐~
 
 ---
 
-## 📖 关于本仓库
+## ✨ 教程亮点（你将收获什么？）
 
-- **教程来源**：尚硅谷《大模型智能体线上速成班》
-- **内容构成**：课程课件同步 + 内容补充完善 + 个人学习笔记
-- **目标**：系统掌握大模型与智能体原理与实践，从零到能独立开发 RAG / Agent 项目
-
-## ✨ 教程亮点
-
-- **最大亮点：可落地**：内含**大量提示词工程等模板**，以及**企业级源码**，可直接部署为智能体，拿来即用、不做「纸上谈兵」。
+- **最大亮点：可落地**，内含**大量提示词工程等模板**，以及**企业级源码**，可直接部署为智能体，拿来即用、不做「纸上谈兵」。
 - **从零到项目**：从大模型认识、提示词工程到低代码平台（Coze/Dify）与代码框架（LangChain/LangGraph），再到企业级 RAG/Agent 项目，形成完整学习路径。
 - **企业级实战**：覆盖商户运营管家、掌柜智库、电商小二、掌柜问数、市场罗盘等多类实战项目，含意图解析、多源知识库、转人工、复盘与监控等真实场景。
 - **多平台对比与打通**：Coze 与 Dify 的对比与实操，Python 调用工作流，容器化（Docker）与企业级部署（云服务器、AutoDL、Ollama、Xinference、Coze 本地化）。
@@ -122,6 +118,14 @@
 
 ---
 
+## 📖 关于本仓库
+
+- **教程来源**：尚硅谷《大模型智能体线上速成班》
+- **内容构成**：课程课件同步 + 内容补充完善 + 个人学习笔记
+- **目标**：系统掌握大模型与智能体原理与实践，从零到能独立开发 RAG / Agent 项目
+
+---
+
 ## 📁 仓库结构说明
 
 - 教程目录与章节对应关系见 **`0-课程目录大纲.md`**
@@ -136,4 +140,4 @@
 
 ---
 
-**仓库英文名**：`ai-agents-from-zero` · **中文名称**：《AI 智能体从入门到精通》
+**仓库英文名**：`ai-agents-from-zero` · **仓库中文名**：《AI 智能体从入门到精通》
