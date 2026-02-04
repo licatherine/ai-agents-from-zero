@@ -2,7 +2,7 @@
 
 ---
 
-## 1. Docker DeskTop 安装
+## 1. Docker Desktop 安装
 
 ### 1.1 下载-安装包
 
@@ -12,7 +12,7 @@
 
 ![](images/7/7-1-1-1.png)
 
-方式 2：从视频资料里获取
+方式 2：从网盘资料里获取：
 
 ![](images/7/7-1-1-2.png)
 
@@ -52,11 +52,11 @@
 
 ![](images/7/7-1-9-1.png)
 
-> 个别首次安装的小伙伴会被 windows 系统提示需要安装`适用于Linux的Windows子系统`。这里选择确认安装。稍等片刻后会完成安装。
+> 个别首次安装的小伙伴会被 Windows 系统提示需要安装`适用于Linux的Windows子系统`。这里选择确认安装。稍等片刻后会完成安装。
 
 ### 1.10 安装成功验证
 
-通过 win+r 调取运行：输入 cmd
+通过 win+r 打开运行：输入 cmd
 
 ![](images/7/7-1-10-1.png)
 
@@ -64,27 +64,27 @@
 
 ![](images/7/7-1-10-2.png)
 
-## 2. 部署 dify
+## 2. 部署 Dify
 
-### 2.1 拉取 dify 代码
+### 2.1 拉取 Dify 代码
 
-github 地址
+github 地址：
 
-> https://github.com/langgenius/dify
+> https://github.com/langgenius/Dify
 
-或者使用本地提供给大家的：
+或者从网盘资料中获取：
 
 ![](images/7/7-2-1-1.png)
 
 ### 2.2 更改信息
 
-> 下面的操作，在 git 的 readme 文档中都有。
+> 下面的操作，在 Dify 官方文档中有。
 >
-> https://github.com/langgenius/dify/blob/main/README_CN.md
+> https://docs.Dify.ai/zh/self-host/quick-start/docker-compose
 >
 > 这里直接操作：
 
-进入 dify 仓库目录下的 docker 目录
+进入 Dify 仓库目录下的 Docker 目录
 
 复制.env.example 为.env
 
@@ -98,15 +98,15 @@ github 地址
 
 ### 2.3 打开终端
 
-如下操作可以在 windows 的命令行窗口进行，或者在 docker 客户终端中进行。
+如下操作可以在 windows 的命令行窗口进行，或者在 Docker 客户终端中进行。
 
-比如：在终端中进入 docker 目录
+比如：在终端中进入 Docker 目录
 
 ![](images/7/7-2-3-1.png)
 
 ### 2.4 安装
 
-执行以下命令部署 dify
+执行以下命令部署 Dify
 
 > ```shell
 > docker compose up -d
@@ -124,9 +124,9 @@ github 地址
 
 ![](images/7/7-2-4-3.png)
 
-### 2.5 访问 dify
+### 2.5 访问 Dify
 
-浏览器访问 localhost 即可
+浏览器访问 http://localhost （若修改过端口，例如改为 8100，则访问 http://localhost:8100 ） 即可。
 
 首次访问需要设置用户名密码，略。
 

@@ -24,7 +24,7 @@ Coze 的 API 功能需要通过应用发布功能启用。
 
 ![](images/5/5-2-2-1.png)
 
-### 2.3 授权 API key
+### 2.3 授权 API Key
 
 左侧窗口下滑，可以看到 token，这就是 API Key，点击授权
 
@@ -85,7 +85,7 @@ Done 是最后一个响应，表示工作流执行完毕，在 Message 响应之
 
 ![](images/5/5-2-7-3.png)
 
-## 3.通过 python 代码调用工作流
+## 3. 通过 Python 代码调用工作流
 
 ### 3.1 官方提供了调用 API 的 Python 代码
 
@@ -160,7 +160,7 @@ pip install cozepy
 
 ![](images/5/5-3-3-2.png)
 
-说明：在 coze 平台考虑过来的代码基础上，添加参数 parameters：
+说明：在 Coze 平台拷贝过来的代码基础上，添加参数 parameters：
 
 ```python
 handle_workflow_iterator(
@@ -235,6 +235,6 @@ handle_workflow_iterator(
 
 ![](images/5/5-3-5-1.png)
 
-## 4.通过平台运行
+## 4. 通过平台运行
 
 ![](images/5/5-4-1.png)
