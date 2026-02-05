@@ -4,7 +4,7 @@
 
 ## 1、发布
 
-要通过 API 的方式启动工作流，后者必须是已发布状态。
+要通过 API 的方式启动工作流，**工作流必须是已发布状态**。
 
 ![](images/4/4-1-1.png)
 
@@ -65,15 +65,14 @@ api_key 替换为上一步创建的 API 密钥。
 
 ```json
 {
-  "inputs": {}, //真正输入工作流的数据，每个输入字段对应该 JSON 的一个字段
-  "response_mode": "streaming", //响应模式，分为流式（streaming）和阻塞式（blocking）
-  "user": "abc-123" //用户信息，用于区分调用者，随意命名
+  "inputs": {}, // 传入工作流的实际输入数据，每个输入字段对应于该 JSON 的一个字段
+  "response_mode": "streaming", // 响应模式：流式（streaming）或阻塞式（blocking）
+  "user": "abc-123" // 用户信息，用于区分调用者，可随意命名
 }
 ```
 
-流式，基于 SSE（Server-Sent Events）实现类似打字机输出方式的流式返回
-
-阻塞式，等待执行完毕后返回结果（流程较长则可能会被中断）。由于平台限制，请求会在 100 秒超时无返回后中断
+- **流式（streaming）**：基于 SSE（Server-Sent Events）实现类似打字机输出方式的流式返回。
+- **阻塞式（blocking）**：等待执行完毕后一次性返回结果（流程较长时可能会被中断）。由于 Dify 云平台/网关限制，请求在约 100 秒无返回后会超时中断。
 
 ## 5、Postman 测试（可跳过）
 
@@ -87,7 +86,7 @@ api_key 替换为上一步创建的 API 密钥。
 
 ### 5.3 添加请求体
 
-此处选择原始文本-JSON 格式
+此处选择 Body → raw（原始），格式选 JSON
 
 ![](images/4/4-5-3-1.png)
 
@@ -163,7 +162,7 @@ target 字段的值就是我们传递给工作流的输入信息。
 }
 ```
 
-output 字段下为最终输出。我们精简输出，JSON 格式为
+`output` 字段下为最终输出。精简后的 JSON 结构如下：
 
 ```json
 {
@@ -232,7 +231,7 @@ import json
 # 响应返回模式
 # 流式，基于 SSE（Server-Sent Events）实现类似打字机输出方式的流式返回
 STREAMING_MODE="streaming"
-# 阻塞式，等待执行完毕后返回结果（流程较长则可能会被中断）。由于 Cloudflare 限制，请求会在 100 秒超时无返回后中断
+# 阻塞式，等待执行完毕后返回结果（流程较长则可能会被中断）。由于 Dify 云/网关限制，请求在约 100 秒无返回后会超时中断
 BLOCKING_MODE="blocking"
 
 # 工作流的API_KEY
@@ -278,7 +277,7 @@ def stream_dify_workflow(target, api_key=API_KEY, base_url=BASE_URL, username="p
                     # 解码
                     decoded_line = line.decode('utf-8')
 
-                    # 处理中文乱码，将Unicode转义格式处理为正常中文
+                    # 将 JSON 中的 Unicode 转义序列（如 \uXXXX）解码为对应字符
                     fixed_line = decoded_line.encode("utf-8").decode("unicode_escape")
 
                     # 打印由二进制解析为 UTF-8 后的响应
@@ -330,9 +329,10 @@ if __name__ == "__main__":
     result = stream_dify_workflow("新能源发展现状")
     print("----------> result <----------")
 
-    # 遍历结果列表，打印最终输出
-    for l in result:
-        print(l)
+    # 若成功返回，遍历结果列表并打印最终输出（失败时 result 为 None）
+    if result:
+        for item in result:
+            print(item)
 
 ```
 

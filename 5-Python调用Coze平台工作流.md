@@ -10,43 +10,41 @@ Coze 的 API 功能需要通过应用发布功能启用。
 
 ### 2.1 入口
 
-发布成功后在工作流画布页面可以看到 API 调试入口
+发布成功后，在工作流画布页面可以看到 API 调试入口。
 
 ![](images/5/5-2-1-1.png)
 
 ### 2.2 查看工作流 ID 和应用 ID
 
-通过上述入口进入 API playground，选择右侧的 Shell 请求
+通过上述入口进入 API playground，选择右侧的 Shell 请求方式。
 
-可以看到工作流 ID：workflow_id
-
-应用 ID：app_id
+界面中会显示**工作流 ID**（字段名 workflow_id）和**应用 ID**（字段名 app_id）的取值。
 
 ![](images/5/5-2-2-1.png)
 
 ### 2.3 授权 API Key
 
-左侧窗口下滑，可以看到 token，这就是 API Key，点击授权
+左侧窗口向下滑动，可以看到 token（即 API Key），点击「授权」按钮。
 
 ![](images/5/5-2-3-1.png)
 
-点击“授权”后自动生成并填充 API Key
+点击「授权」后，将自动生成并填充 API Key。
 
 ![](images/5/5-2-3-2.png)
 
-右侧的 Shell 命令窗口同步更新
+右侧的 Shell 命令窗口会同步更新。
 
 ### 2.4 添加参数
 
-parameters 属性下的 JSON 用于向工作流传递参数。
+请求体中的 **parameters** 对象用于向工作流传递参数。
 
-该 JSON 对象的每个属性对应一个工作流的输入变量
+该对象的每个属性对应于工作流的一个输入变量。
 
 ![](images/5/5-2-4-1.png)
 
 ### 2.5 运行
 
-可以直接点击 Shell 命令窗口右上角的“运行”按钮
+可以直接点击 Shell 命令窗口右上角的「运行」按钮。
 
 ![](images/5/5-2-5-1.png)
 
@@ -65,33 +63,35 @@ curl -X POST 'https://api.coze.cn/v1/workflow/stream_run' \
 }'
 ```
 
+> **说明**：上述 `link` 为示例参数（希望复刻的视频链接），请按实际工作流输入替换。JSON 标准不支持 `#` 注释，请求体中请勿写入注释。
+
 ### 2.7 运行结果
 
 ![](images/5/5-2-7-1.png)
 
-右下角可以看到运行结果
+右下角可以看到运行结果。
 
-200 表示通信正常
-
-PING 是用于维持通信连接的心跳响应
-
-Message 是携带数据的响应
+- **200**：HTTP 状态码，表示请求成功、通信正常。
+- **PING**：心跳响应，用于维持连接。
+- **Message**：携带数据的响应类型。
 
 ![](images/5/5-2-7-2.png)
 
-此处的 content 是工作流的输出。
+此处的 **content** 字段即为工作流在该步骤的输出内容。
 
-Done 是最后一个响应，表示工作流执行完毕，在 Message 响应之后。
+**Done** 为最后一个响应，表示工作流执行完毕，通常出现在所有 Message 之后。
 
 ![](images/5/5-2-7-3.png)
 
 ## 3. 通过 Python 代码调用工作流
 
-### 3.1 官方提供了调用 API 的 Python 代码
+### 3.1 官方提供的 Python 示例代码
+
+Coze 平台提供了用于调用工作流 API 的 Python 示例代码。
 
 ![](images/5/5-3-1-1.png)
 
-### 3.2 源码如下
+### 3.2 示例源码
 
 ```python
 """
@@ -146,13 +146,13 @@ handle_workflow_iterator(
 
 将源码粘贴到 PyCharm。
 
-### 3.3 在本地 PyCharm 中运行需要安装 cozepy
+### 3.3 在本地 PyCharm 中运行前，需要先安装 cozepy：
 
 ```sh
 pip install cozepy
 ```
 
-代码粘贴后，运行，报错：
+代码粘贴并运行后，若缺少参数会报错：
 
 ![](images/5/5-3-3-1.png)
 
@@ -160,7 +160,7 @@ pip install cozepy
 
 ![](images/5/5-3-3-2.png)
 
-说明：在 Coze 平台拷贝过来的代码基础上，添加参数 parameters：
+**处理方式**：在从 Coze 平台拷贝的代码基础上，为 `stream()` 调用增加 **parameters** 参数：
 
 ```python
 handle_workflow_iterator(
