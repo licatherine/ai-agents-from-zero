@@ -19,6 +19,7 @@
     - [Coze 的 Windows 平台部署](6-Coze的Windows平台部署.md)
     - [Dify 的 Windows 平台部署](7-Dify的Windows平台部署.md)
     - [企业级大模型部署](8-企业级大模型部署.md)
+    - [Docker 相关知识点与常见问题](8.1-Docker相关知识点与常见问题.md)
   - 工作流智能体案例与源码
     - [1 一键生成行业调研 PPT（Coze)](3-Coze&Dify平台工作流智能体案例与源码/3.1-Coze案例：一键生成行业调研PPT/3.1-一键生成行业调研PPT.md)
     - [2 复刻爆款视频（Coze)](3-Coze&Dify平台工作流智能体案例与源码/3.2-Coze案例：复刻爆款视频/3.2-复刻爆款视频.md)
