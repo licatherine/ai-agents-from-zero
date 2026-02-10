@@ -34,6 +34,8 @@
 
 - 04 大模型核心开发框架
 
-  - [LangChain 框架原理与应用](9-LangChain框架原理与应用.md)
+  - [LangChain 概述与快速上手](9-LangChain概述与快速上手.md)
+  - [Model-I-O 与 Ollama 本地部署](10-Model-I-O与Ollama本地部署.md)
+  - [提示词与输出解析](11-提示词与输出解析.md)
 
 - [更新日志](教程更新日志.md)
