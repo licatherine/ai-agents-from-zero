@@ -15,6 +15,14 @@
     不是消息列表，适合只看一整段文字时用，不能直接替代 format_messages 交给聊天模型。
 
 三、小结：和模型对话时，用 format_messages 或 invoke 得到消息列表，再 model.invoke(消息列表)。
+
+四、Python 入门：两种传参写法与 ** 解包
+  - 写法一（关键字参数）：直接写 参数名=值，例如 format_messages(role="xxx", question="yyy")。
+  - 写法二（字典 + **）：先有一个字典 d = {"role": "xxx", "question": "yyy"}，再写 format_messages(**d)。
+  - ** 叫做「解包」：**字典 会把字典「拆开」成「键=值」的形式传给函数。也就是说：
+      format_messages(**{"role": "A", "question": "B"})  等价于  format_messages(role="A", question="B")
+  - 函数定义里的 **kwargs 表示「接收任意多个关键字参数，并收成一个字典」；调用时的 **字典 则相反，是「把字典展开成关键字参数」。
+  - 什么时候用 **？当参数已经在一个字典里时（例如从配置、接口返回、循环中得到），用 ** 就不用手写一长串 role=..., question=...，直接 **params 即可。
 """
 
 import os
@@ -30,9 +38,10 @@ chat_prompt = ChatPromptTemplate.from_messages(
 )
 
 # ---------- 方式一：format_messages ----------
-# 关键字参数：role、question 对应模板里的 {role}、{question}
-# 返回值是「消息列表」，可交给 llm.invoke(prompt_value)
-# prompt_value = chat_prompt.format_messages(role="python开发工程师", question="冒泡排序怎么写")
+# 下面两种写法完全等价，都是把 role、question 传给模板里的 {role}、{question}：
+#   写法 A（关键字参数）：format_messages(role="python开发工程师", question="堆排序怎么写")
+#   写法 B（字典 + ** 解包）：format_messages(**{"role": "python开发工程师", "question": "堆排序怎么写"})
+# ** 表示把字典「解包」成 key=value 的形式传入，适合参数已经在 dict 里的场景。
 prompt_value = chat_prompt.format_messages(**{"role": "python开发工程师", "question": "堆排序怎么写"})
 print(prompt_value)
 
