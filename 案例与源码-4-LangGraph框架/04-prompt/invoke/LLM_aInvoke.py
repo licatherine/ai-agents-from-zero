@@ -39,3 +39,7 @@ async def main():
 # asyncio.run(main()) 会启动事件循环、执行 main()，直到 main() 结束。初学者只需记住：异步入口这样写。
 if __name__ == "__main__":
     asyncio.run(main())
+
+# 【输出示例】
+# 响应类型：<class 'langchain_core.messages.ai.AIMessage'>
+# [{'type': 'text', 'text': 'LangChain是一个开源框架，用于构建基于大语言模型（LLM）的应用程序。它提供模块化组件（如链、代理、记忆、工具集成等），支持提示工程、数据检索增强（RAG）、多步推理和外部工具调用，简化LLM应用的开发、编排与部署。'}]

@@ -6,6 +6,8 @@
 - batch：一次提交多条输入，模型内部并行处理，返回与输入一一对应的多条结果。
 - 适用场景：数据清洗、批量评估、离线任务；通常比「循环里多次 invoke」更高效。
 - 输入：可以是字符串列表，或消息列表的列表；这里用「字符串列表」最简单，每条会当作一次用户问题。
+- zip：Python 内置函数，名字来自「拉链」（zipper），表示把多个序列按位置一一配对，与压缩文件 .zip 无关。
+  例：zip([1,2,3], ["a","b","c"]) → (1,"a"), (2,"b"), (3,"c")。这里用来把「问题列表」和「回答列表」成对遍历。
 """
 
 import os
@@ -37,5 +39,7 @@ response = model.batch(questions)
 print(f"响应类型：{type(response)}")
 print()
 
+# zip(questions, response)：zip 取自「拉链」，表示按位置配对，不是压缩。把两个列表一一对应：(第1个问题, 第1个回答), ...
+# 循环时每次同时拿到「当前问题 q」和「对应的回答 r」。可去掉 zip，改用下标 for i in range(len(questions)) 配合 questions[i]、response[i]。
 for q, r in zip(questions, response):
     print(f"问题：{q}\n回答：{r.content}\n")

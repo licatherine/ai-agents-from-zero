@@ -12,6 +12,9 @@ from dotenv import load_dotenv
 load_dotenv(encoding='utf-8')
 
 # ========== 2. 实例化时设置常用参数 ==========
+# temperature：控制输出随机性，0 更确定、高重复，越大越随机、越有创意。
+# 通常取 0~2，源于 OpenAI API 约定；具体上下界以所用 API 文档为准。
+# 超过 2（如 2.1）可能被部分接口拒绝或截断，且与 2.0 效果差异不大，建议不超过 2。
 model = init_chat_model(
     model="deepseek-chat",
     model_provider="openai",
@@ -25,3 +28,14 @@ model = init_chat_model(
 for i in range(3):
     print(f"--- 第 {i + 1} 次 ---")
     print(model.invoke("写一句关于春天的词，14 字以内").content)
+
+
+# 【输出示例】温度为 2.0 时，输出如下结果
+# 莺惊柳浪春犁响，一鞭云水碧
+# **诗家酥雨润，闲趁卖花声。**
+# 寒威已退先春雨，万枝吐翠流云间。
+
+# 【输出示例】温度为 0 时，输出如下结果
+# 风软一溪云，花明两岸春。
+# 风软一溪云，花明两岸春。
+# 风软一溪云，花明两岸春。

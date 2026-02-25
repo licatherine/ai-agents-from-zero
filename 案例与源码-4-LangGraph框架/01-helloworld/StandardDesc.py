@@ -116,5 +116,8 @@ def main():
 #
 # 注意：必须写 "__main__" 不能写成 "main"。Python 规定「主程序」的 __name__ 就是 "__main__"，
 # 若写成 if __name__ == "main": 则条件永远为假（因为 __name__ 实际是 "__main__"），直接运行脚本时 main() 也不会被调用。
+#
+# 这里直接写 main() 即可，因为本文件的 main 是普通函数（def main），调用即执行。
+# 若 main 是异步函数（async def main），则必须写 asyncio.run(main())，否则协程不会真正运行。
 if __name__ == "__main__":
     main()

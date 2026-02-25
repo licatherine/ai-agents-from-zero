@@ -1,0 +1,65 @@
+"""
+【第 11 章 - 文本提示词模板：构造函数创建 PromptTemplate】
+对应笔记：11-提示词与输出解析.md → 1.5 提示词模板概览、1.6 文本提示词模板（PromptTemplate）
+
+知识点速览：
+- 占位符：模板里先留空、运行时再填的那一块，如 {role}、{question}，像填空题。
+- PromptTemplate：纯文本模板，占位符填完后得到「一条字符串」，是最基础的一种（由浅入深里先学它）。
+- 创建方式一：用构造函数 PromptTemplate(template="...", input_variables=[...])，必须显式列出所有占位符变量名。
+"""
+
+import os
+
+from dotenv import load_dotenv
+from langchain.chat_models import init_chat_model
+from langchain_core.prompts import PromptTemplate
+
+load_dotenv()
+
+# ---------- 1. 用构造函数创建模板 ----------
+# template：整段话里用 {变量名} 表示占位符；input_variables：列出所有需要「每次调用时传入」的变量名
+template = PromptTemplate(
+    template="你是一个专业的{role}工程师，请回答我的问题给出回答，我的问题是：{question}",
+    input_variables=['role', 'question']
+)
+
+# ---------- 2. 用 format 填入占位符，得到一条最终提示词字符串 ----------
+prompt = template.format(role="python开发", question="冒泡排序怎么写,只要代码其它不要，简洁")
+print(prompt)
+
+# ---------- 3. 将格式化后的字符串发给模型（部分聊天模型支持直接传字符串）----------
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("aliQwen-api"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+result = model.invoke(prompt)
+print(result.content)
+print("\n\n")
+
+# ---------- 4. 同一模板复用：换不同参数得到不同提示词 ----------
+template = PromptTemplate(
+    template="请评价{product}的优缺点，包括{aspect1}和{aspect2}。",
+    input_variables=["product", "aspect1", "aspect2"],
+)
+prompt_1 = template.format(product="智能手机", aspect1="电池续航", aspect2="拍照质量")
+prompt_2 = template.format(product="笔记本电脑", aspect1="处理速度", aspect2="便携性")
+print(prompt_1)
+print(prompt_2)
+
+
+# 【输出示例】
+# 你是一个专业的python开发工程师，请回答我的问题给出回答，我的问题是：冒泡排序怎么写,只要代码其它不要，简洁
+# ```python
+# def bubble_sort(arr):
+#     n = len(arr)
+#     for i in range(n):
+#         for j in range(0, n - i - 1):
+#             if arr[j] > arr[j + 1]:
+#                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
+#     return arr
+# ```
+
+# 请评价智能手机的优缺点，包括电池续航和拍照质量。
+# 请评价笔记本电脑的优缺点，包括处理速度和便携性。
