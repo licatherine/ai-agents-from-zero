@@ -6,7 +6,7 @@
 
 - 完成从零到一的 HelloWorld：环境与约定、安装依赖、基于阿里百炼/通义接入与调用。
 - 掌握**调用三件套**（API Key、模型名、Base URL）及 0.x 与 1.0 两种写法（`ChatOpenAI` / `init_chat_model`）。
-- 会实现**多模型共存**（通义 + DeepSeek）、**企业级封装与流式输出**，为后续学习 Model I/O、Ollama、提示词与输出解析（第 11～14 章）打好基础。
+- 会实现**多模型共存**（通义 + DeepSeek）、**企业级封装与流式输出**，为后续学习 Model I/O、Ollama、提示词与输出解析（第 11 ～ 14 章）打好基础。
 
 **前置知识建议：** 已学习 [第 9 章 - LangChain 概述与架构](9-LangChain概述与架构.md)，了解 LangChain 的定位与六大核心模块；具备 Python 环境与包管理基础。
 
@@ -98,21 +98,7 @@ pip install langchain-core
 
 【案例源码】环境检查脚本：`案例与源码-4-LangGraph框架/01-helloworld/GetEnvInfo.py`
 
-```python
-import langchain
-import langchain_community
-import sys
-
-print("langchainVersion:  "+langchain.__version__)
-print("langchain_communityVersion:  "+langchain_community.__version__)
-print("langchainfile:"+langchain.__file__)
-
-print(sys.version)
-```
-
-【输出示例】
-
-![](images/10/10-3-1-1.png)
+[GetEnvInfo.py](案例与源码-4-LangGraph框架/01-helloworld/GetEnvInfo.py ":include :type=code")
 
 **方法二：在 PyCharm 中查看已安装包（图形界面）**
 
@@ -167,47 +153,15 @@ print(sys.version)
 
 **方式一：LangChain 0.3（了解即可，目前仍在使用）**
 
-```python
-# LangChain 0.3 使用方式
-from langchain_openai import ChatOpenAI
-import os
-from dotenv import load_dotenv
+【案例源码】`案例与源码-4-LangGraph框架/01-helloworld/LangChainV0.3.py`
 
-# 推荐：用 .env 管理密钥，避免硬编码
-load_dotenv(encoding='utf-8')
-
-llm = ChatOpenAI(
-    model="deepseek-v3.2",
-    api_key=os.getenv("QWEN_API_KEY"),
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-)
-
-response = llm.invoke("你是谁")
-print(response)
-print(response.content)
-```
+[LangChainV0.3.py](案例与源码-4-LangGraph框架/01-helloworld/LangChainV0.3.py ":include :type=code")
 
 **方式二：LangChain 1.0+（推荐）**
 
-```python
-# LangChain 1.0+ 使用方式
-import os
-from dotenv import load_dotenv
-from langchain.chat_models import init_chat_model
+【案例源码】`案例与源码-4-LangGraph框架/01-helloworld/LangChainV1.0.py`
 
-load_dotenv(encoding='utf-8')
-
-model = init_chat_model(
-    model="qwen-plus",
-    model_provider="openai",
-    api_key=os.getenv("aliQwen-api"),
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-)
-
-print(model.invoke("你是谁").content)
-
-# 若报错 Unable to infer model provider，需显式指定 model_provider="openai"
-```
+[LangChainV1.0.py](案例与源码-4-LangGraph框架/01-helloworld/LangChainV1.0.py ":include :type=code")
 
 **两版对比小结**：1.0 通过 `init_chat_model` 统一入口，便于切换不同厂商与模型。
 
@@ -248,35 +202,9 @@ print(model.invoke("你是谁").content)
 
 下面示例使用 **不同变量名**（`model_qwen`、`model_deepseek`）保存两个模型实例，避免后者覆盖前者，便于后续扩展与维护。
 
-【案例源码】`4-LangGraph框架案例与源码/01-helloworld/LangChain_MoreV1.0.py`
+【案例源码】`案例与源码-4-LangGraph框架/01-helloworld/LangChain_MoreV1.0.py`
 
-```python
-# LangChain 1.0+ 多模型共存（推荐用不同变量名区分）
-from dotenv import load_dotenv
-from langchain.chat_models import init_chat_model
-import os
-
-load_dotenv()
-
-# 通义
-model_qwen = init_chat_model(
-    model="qwen-plus",
-    model_provider="openai",
-    api_key=os.getenv("QWEN_API_KEY"),
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-)
-print(model_qwen.invoke("你是谁").content)
-
-print("*" * 70)
-
-# DeepSeek
-model_deepseek = init_chat_model(
-    model="deepseek-chat",
-    api_key=os.getenv("deepseek-api"),
-    base_url="https://api.deepseek.com"
-)
-print(model_deepseek.invoke("你是谁").content)
-```
+[LangChain_MoreV1.0.py](案例与源码-4-LangGraph框架/01-helloworld/LangChain_MoreV1.0.py ":include :type=code")
 
 ---
 
@@ -292,61 +220,9 @@ print(model_deepseek.invoke("你是谁").content)
 
 下面示例将 LLM 初始化封装成函数、做环境变量校验、使用日志与异常处理，并演示流式调用。
 
-【案例源码】`4-LangGraph框架案例与源码/01-helloworld/StandardDesc.py`
+【案例源码】`案例与源码-4-LangGraph框架/01-helloworld/StandardDesc.py`
 
-```python
-# 企业级示例：封装、异常处理、流式输出
-from langchain_openai import ChatOpenAI
-import os
-from dotenv import load_dotenv
-from langchain_core.exceptions import LangChainException
-import logging
-
-load_dotenv(encoding='utf-8')
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-
-def init_llm_client() -> ChatOpenAI:
-    """初始化 LLM 客户端，环境变量未配置时抛出 ValueError。"""
-    api_key = os.getenv("QWEN_API_KEY")
-    if not api_key:
-        raise ValueError("环境变量 QWEN_API_KEY 未配置，请检查 .env 文件")
-
-    return ChatOpenAI(
-        model="deepseek-v3.2",
-        api_key=api_key,
-        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-        temperature=0.7,
-        max_tokens=2048,
-    )
-
-
-def main():
-    try:
-        llm = init_llm_client()
-        logger.info("LLM 客户端初始化成功")
-
-        question = "你是谁"
-        response = llm.invoke(question)
-        logger.info(f"问题：{question}")
-        logger.info(f"回答：{response.content}")
-
-        print("==================== 以下是流式输出 ====================")
-        for chunk in llm.stream("介绍下 LangChain，300 字以内"):
-            print(chunk.content, end="")
-
-    except ValueError as e:
-        logger.error(f"配置错误：{e}")
-    except LangChainException as e:
-        logger.error(f"模型调用失败：{e}")
-    except Exception as e:
-        logger.error(f"未知错误：{e}")
-
-
-if __name__ == "__main__":
-    main()
-```
+[StandardDesc.py](案例与源码-4-LangGraph框架/01-helloworld/StandardDesc.py ":include :type=code")
 
 ---
 

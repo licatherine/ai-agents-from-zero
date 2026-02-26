@@ -134,6 +134,8 @@ def chat_with_model(model_name, prompt):
 
 【案例源码】`案例与源码-4-LangGraph框架/02-models_io/ModelIO_Params.py`
 
+[ModelIO_Params.py](案例与源码-4-LangGraph框架/02-models_io/ModelIO_Params.py ":include :type=code")
+
 ![示例：在代码中设置模型参数](images/11/11-2-4-1.jpeg)
 
 ### 2.5 模型返回：Message 组件
@@ -191,68 +193,19 @@ LangChain 支持通过不同集成包接入多种大模型，以下按「OpenAI 
 
 【案例源码】`案例与源码-4-LangGraph框架/02-models_io/ModelIO_OpenAI.py`
 
-```python
-# 需先安装：pip install openai
-import os
-from openai import OpenAI
-
-client = OpenAI(
-    api_key=os.getenv("deepseek-api"),
-    base_url="https://api.deepseek.com"
-)
-
-response = client.chat.completions.create(
-    model="deepseek-chat",
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant"},
-        {"role": "user", "content": "Hello，你是谁？"},
-    ],
-    stream=False
-)
-
-print(response.choices[0].message.content)
-```
+[ModelIO_OpenAI.py](案例与源码-4-LangGraph框架/02-models_io/ModelIO_OpenAI.py ":include :type=code")
 
 **示例二：使用 LangChain ChatOpenAI（0.x 写法，如对接通义千问兼容接口）**
 
 【案例源码】`案例与源码-4-LangGraph框架/02-models_io/ModelIO_ChatOpenAI.py`
 
-```python
-# 需先安装：pip install langchain_openai
-from langchain_openai import ChatOpenAI
-import os
-
-chatLLM = ChatOpenAI(
-    api_key=os.getenv("aliQwen-api"),
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-    model="qwen-plus",  # 可按需更换，模型列表见阿里云文档
-)
-
-messages = [
-    {"role": "system", "content": "You are a helpful assistant."},
-    {"role": "user", "content": "你是谁？"}
-]
-
-response = chatLLM.invoke(messages)
-print(response.content)
-```
+[ModelIO_ChatOpenAI.py](案例与源码-4-LangGraph框架/02-models_io/ModelIO_ChatOpenAI.py ":include :type=code")
 
 **示例三：使用 init_chat_model 统一入口（1.0 写法，推荐）**
 
 【案例源码】`案例与源码-4-LangGraph框架/02-models_io/ModelIO_Init_chat_model.py`
 
-```python
-import os
-from langchain.chat_models import init_chat_model
-
-model = init_chat_model(
-    model="deepseek-chat",
-    api_key=os.getenv("deepseek-api"),
-    base_url="https://api.deepseek.com"
-)
-
-print(model.invoke("你是谁").content)
-```
+[ModelIO_Init_chat_model.py](案例与源码-4-LangGraph框架/02-models_io/ModelIO_Init_chat_model.py ":include :type=code")
 
 ### 3.2 接入 DeepSeek
 
@@ -268,21 +221,7 @@ DeepSeek 提供官方 LangChain 集成包 `langchain-deepseek`，无需手动填
 
 **0.x 写法：**
 
-```python
-import os
-from langchain_deepseek import ChatDeepSeek
-
-model = ChatDeepSeek(
-    model="deepseek-chat",
-    temperature=0,
-    max_tokens=None,
-    timeout=None,
-    max_retries=2,
-    api_key=os.getenv("deepseek-api"),
-)
-
-print(model.invoke("你是谁？"))
-```
+[ModelIO_DeepSeek.py](案例与源码-4-LangGraph框架/02-models_io/ModelIO_DeepSeek.py ":include :type=code")
 
 **1.0 写法一：OpenAI 兼容接口（通用、不依赖 langchain-deepseek）**
 
@@ -335,19 +274,7 @@ print(model.invoke("你是谁？").content)
 
 **0.x 写法：**
 
-```python
-# 需先安装：pip install langchain_openai；.env 中配置 aliQwen-api
-import os
-from langchain_openai import ChatOpenAI
-
-model = ChatOpenAI(
-    api_key=os.getenv("aliQwen-api"),
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-    model="qwen-plus",  # 可按需换为 qwen-turbo、qwen-max 等，见阿里云百炼文档
-)
-
-print(model.invoke("你是谁？").content)
-```
+[ModelIO_Qwen.py](案例与源码-4-LangGraph框架/02-models_io/ModelIO_Qwen.py ":include :type=code")
 
 **1.0 写法（推荐）：**
 

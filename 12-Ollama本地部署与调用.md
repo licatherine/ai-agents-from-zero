@@ -155,19 +155,7 @@ pip install -U ollama
 
 【案例源码】`案例与源码-4-LangGraph框架/03-ollama/LangChain_Ollama.py`
 
-```python
-from langchain_ollama import ChatOllama
-
-# 使用本机 Ollama 服务，模型名需与 ollama list 中的名称一致
-llm = ChatOllama(
-    model="qwen:4b",       # 或 "llama3"、"deepseek-r1:14b" 等
-    base_url="http://localhost:11434",  # 默认即本机
-    temperature=0.7,
-)
-
-response = llm.invoke("你好，请用一句话介绍你自己。")
-print(response.content)
-```
+[LangChain_Ollama.py](案例与源码-4-LangGraph框架/03-ollama/LangChain_Ollama.py ":include :type=code")
 
 若需与 **Prompt 模板、Chain、Agent** 等结合，只需将上面的 `llm` 传入对应组件即可，与使用 `ChatOpenAI` 的方式一致。
 
