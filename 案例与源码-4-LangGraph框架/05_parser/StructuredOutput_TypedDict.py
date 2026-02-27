@@ -5,8 +5,8 @@
 
 知识点速览：
 一、什么是「结构化输出」？
-  - 希望模型返回的不是随便一段话，而是**固定结构**的数据（如指定字段的 dict），方便程序后续处理。
-  - LangChain 支持用 **TypedDict**（Python 标准库）或 **Pydantic** 定义结构，再由模型按该结构生成并解析。
+  - 希望模型返回的不是随便一段话，而是固定结构的数据（如指定字段的 dict），方便程序后续处理。
+  - LangChain 支持用 TypedDict（Python 标准库）或 Pydantic 定义结构，再由模型按该结构生成并解析。
 
 二、with_structured_output 做什么？
   - 在模型上调用 llm.with_structured_output(某个类型)，会返回一个「带了结构化输出能力」的可调用对象。
@@ -47,3 +47,6 @@ messages = [{"role": "user", "content": "任意生成三种动物，以及他们
 llm_with_structured_output = llm.with_structured_output(AnimalList)
 resp = llm_with_structured_output.invoke(messages)
 print(resp)  # 得到符合 AnimalList 的 dict，如 {"animals": [{"animal": "猫", "emoji": "🐱"}, ...]}
+
+# 【输出示例】
+# {'animals': [{'animal': '狗', 'emoji': '🐶'}, {'animal': '猫', 'emoji': '🐱'}, {'animal': '鸟', 'emoji': '🐦'}]}

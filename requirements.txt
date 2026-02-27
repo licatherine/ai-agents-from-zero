@@ -1,4 +1,4 @@
-# 《AI 智能体实战速成指南：从零到企业级落地 | ai-agents-from-zero》：全项目案例依赖
+# 《AI 智能体实战速成指南：从零到企业级落地 | ai-agents-from-zero》：案例依赖
 # 使用方式：在项目根目录执行
 #   macOS/Linux:  python3 -m venv .venv && source .venv/bin/activate
 #   Windows CMD:  python -m venv .venv 然后  .venv\Scripts\activate.bat

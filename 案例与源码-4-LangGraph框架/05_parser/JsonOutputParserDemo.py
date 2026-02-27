@@ -5,10 +5,10 @@
 
 知识点速览：
 一、JsonOutputParser 是什么？
-  - 把模型的**自由文本输出**解析成**结构化 JSON**（Python 里就是 dict / list）。
+  - 把模型的自由文本输出解析成结构化 JSON（Python 里就是 dict / list）。
   - 模型若返回的是「像 JSON 的文本」，解析器会尝试解析，得到字典后便于后续逻辑、入库或展示。
 
-二、本案例做法：在 system 提示词里**手写**要求，例如「结果返回 json 格式，q 字段表示问题，a 字段表示答案」。
+二、本案例做法：在 system 提示词里手写要求，例如「结果返回 json 格式，q 字段表示问题，a 字段表示答案」。
   - 不依赖 get_format_instructions()，适合结构简单、自己说清楚就够用的场景。
   - 进阶做法见 JsonOutputParser_GetFormatInstructions.py：用 get_format_instructions() 生成格式说明再拼进提示词。
 """

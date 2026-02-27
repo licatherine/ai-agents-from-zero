@@ -25,3 +25,6 @@ p = Person(name="z3", age=111, age2=188)
 print(p)
 
 # p = Person(name="z3", age="1111")  # 若用字符串赋给 age，部分环境可能报错，取决于具体运行时
+
+# 【输出示例】
+# {'name': 'z3', 'age': 111, 'age2': 188}
