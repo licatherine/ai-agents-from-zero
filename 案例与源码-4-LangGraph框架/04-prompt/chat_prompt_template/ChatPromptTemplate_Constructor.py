@@ -1,5 +1,9 @@
 """
-【案例】使用构造函数创建 ChatPromptTemplate（对应教程 1.7 节）
+【案例】使用构造函数创建 ChatPromptTemplate
+
+对应教程章节：第 13 章 - 提示词与消息模板 → 5、对话提示词模板（ChatPromptTemplate）
+
+知识点速览：
 
 一、ChatPromptTemplate 是什么？
   - 大模型（如 GPT、通义）是「多轮对话」形式：有系统设定、用户提问、AI 回复等不同「角色」。

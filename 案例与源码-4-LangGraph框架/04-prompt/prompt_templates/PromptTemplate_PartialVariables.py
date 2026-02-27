@@ -1,6 +1,7 @@
 """
-【第 11 章 - 文本提示词模板：partial_variables 与 partial()】
-对应笔记：11-提示词与输出解析.md → 1.6 PromptTemplate 的用法（partial_variables 参数、partial 方法）
+【案例】文本提示词模板：partial_variables 与 partial()
+
+对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
 
 知识点速览：
 - partial_variables：在「创建模板时」就固定一部分占位符的值，后面 format 时只需传剩余变量。

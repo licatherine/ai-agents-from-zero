@@ -1,6 +1,9 @@
 """
-【案例】用「字典」定义 ChatPromptTemplate 的消息（对应教程 1.7.2 节）
+【案例】用「字典」定义 ChatPromptTemplate 的消息
 
+对应教程章节：第 13 章 - 提示词与消息模板 → 5、对话提示词模板（ChatPromptTemplate）
+
+知识点速览：
 一、为什么用字典？
   - 除了 (role, content) 元组，消息列表里也可以用 dict，格式：{"role": "角色名", "content": "内容"}。
   - role 常见取值："system"（系统设定）、"user" 或 "human"（用户）、"ai"（助手）。

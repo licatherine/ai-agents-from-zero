@@ -1,6 +1,9 @@
 """
-【案例】用 TypedDict + Annotated 做结构化输出（对应教程 2.5 节）
+【案例】用 TypedDict + Annotated 做结构化输出
 
+对应教程章节：第 14 章 - 输出解析器 → 3、结构化输出（TypedDict / Pydantic / Annotated）
+
+知识点速览：
 一、什么是「结构化输出」？
   - 希望模型返回的不是随便一段话，而是**固定结构**的数据（如指定字段的 dict），方便程序后续处理。
   - LangChain 支持用 **TypedDict**（Python 标准库）或 **Pydantic** 定义结构，再由模型按该结构生成并解析。
@@ -14,7 +17,10 @@
 
 import os
 from typing import TypedDict, Annotated
+from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
+
+load_dotenv(encoding="utf-8")
 
 llm = init_chat_model(
     model="qwen-plus",

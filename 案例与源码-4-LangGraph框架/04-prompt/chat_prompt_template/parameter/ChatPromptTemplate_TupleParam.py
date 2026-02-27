@@ -1,6 +1,9 @@
 """
-【案例】用「元组 (role, content)」定义 ChatPromptTemplate 的消息（对应教程 1.7.2 节）
+【案例】用「元组 (role, content)」定义 ChatPromptTemplate 的消息
 
+对应教程章节：第 13 章 - 提示词与消息模板 → 5、对话提示词模板（ChatPromptTemplate）
+
+知识点速览：
 一、为什么用元组？
   - ChatPromptTemplate 的消息列表里，每一项可以是：字符串、字典、元组、或 Message 类。
   - 元组写法最简洁：("角色", "内容")，角色常用 "system"、"human"、"ai"。

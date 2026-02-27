@@ -1,6 +1,7 @@
 """
-【第 11 章 - PromptTemplate 的 format() 方法】
-对应笔记：11-提示词与输出解析.md → 1.6.1 PromptTemplate 的用法（常用方法）
+【案例】PromptTemplate 的 format() 方法
+
+对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
 
 知识点速览：
 - format(kwargs)：为模板里所有占位符赋值，返回**一条字符串**。若少传了某个变量会报错。

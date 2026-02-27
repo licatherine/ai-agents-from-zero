@@ -1,11 +1,11 @@
 """
-【第 11 章 - 模型调用：异步 ainvoke】
-对应笔记：11-提示词与输出解析.md → 1.4 模型调用方法 → 1.4.1 普通调用（异步）
+【案例】模型调用：异步 ainvoke
+
+对应教程章节：第 13 章 - 提示词与消息模板 → 2、模型调用方法
 
 知识点速览：
-- ainvoke：异步版的 invoke。在等待模型响应的过程中不会阻塞主线程，可同时发起多个请求。
-- 适用场景：高并发 Web 服务（如 FastAPI）、大批量请求、需要并发的脚本。
-- Python 用法：ainvoke 是异步方法，必须在 async 函数里用 await 调用，并通过 asyncio.run() 驱动运行。
+- ainvoke：异步版 invoke，等待模型响应时不阻塞主线程，可同时发起多个请求；适合高并发 Web（如 FastAPI）、大批量请求。
+- 用法：ainvoke 为异步方法，须在 async 函数内用 await 调用，入口用 asyncio.run() 驱动。
 """
 
 import os

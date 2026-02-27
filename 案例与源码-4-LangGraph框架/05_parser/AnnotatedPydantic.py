@@ -1,6 +1,9 @@
 """
-【案例】Python 入门：Pydantic + Annotated 实现「带范围的运行时校验」（对应教程 2.5 节）
+【案例】Python 入门：Pydantic + Annotated 实现带范围的运行时校验
 
+对应教程章节：第 14 章 - 输出解析器 → 3、结构化输出（TypedDict / Pydantic / Annotated）
+
+知识点速览：
 一、和 AnnotatedTypedDict 的区别？
   - AnnotatedTypedDict.py：用 typing.Annotated 只加了「描述」元数据，**运行时不会**按「0–150」校验。
   - 本文件：用 **Pydantic** 的 Field(ge=0, le=150) 放在 Annotated 里，即 Annotated[int, Field(ge=0, le=150, ...)]，Pydantic 会在**运行时**校验数值是否在 0–150，超出则抛 ValidationError。

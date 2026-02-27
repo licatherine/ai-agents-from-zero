@@ -1,5 +1,12 @@
-# 环境检查脚本：用于确认当前 Python 环境中 LangChain 相关包的版本与安装路径，
-# 便于排查「装错版本」或「虚拟环境不一致」等问题。无需 API Key，可直接运行。
+"""
+【案例】环境检查：LangChain 版本与安装路径
+
+对应教程章节：第 10 章 - LangChain 快速上手与 HelloWorld → 3、安装依赖
+
+知识点速览：
+本脚本用于确认当前 Python 环境中 LangChain、langchain_community 的版本与安装路径，
+便于排查「装错版本」或「虚拟环境不一致」等问题。无需 API Key，可直接运行。
+"""
 
 import langchain          # 核心框架（Chain、Agent、Memory 等）
 import langchain_community  # 社区扩展（部分集成、第三方工具等）

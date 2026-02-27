@@ -1,10 +1,11 @@
 """
-【第 11 章 - PromptTemplate 的 partial() 方法】
-对应笔记：11-提示词与输出解析.md → 1.6.1 PromptTemplate 的用法（partial 方法）
+【案例】PromptTemplate 的 partial() 方法
+
+对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
 
 知识点速览：
-- partial(kwargs)：固定模板中的**部分**占位符，返回一个**新的模板**，之后只需 format 剩余变量。
-- 典型用法：先 partial(role="python开发") 定好角色，后面多次 format(question="...") 问不同问题，避免重复传 role。
+- partial(kwargs)：固定模板中部分占位符，返回新模板，之后只需 format 剩余变量。
+- 典型用法：先 partial(role="...") 定好角色，后面多次 format(question="...") 问不同问题，避免重复传 role。
 """
 
 from langchain_core.prompts import PromptTemplate

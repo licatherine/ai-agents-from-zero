@@ -1,6 +1,9 @@
 """
-【案例】JsonOutputParser + get_format_instructions()：用格式说明引导模型输出（对应教程 2.4.2 节）
+【案例】JsonOutputParser + get_format_instructions()：用格式说明引导模型输出
 
+对应教程章节：第 14 章 - 输出解析器 → 2、常用输出解析器用法
+
+知识点速览：
 一、get_format_instructions() 做什么？
   - 返回一段**格式说明字符串**，描述「希望模型输出成什么样子」（例如 JSON 里有哪些键、类型是什么）。
   - 把这段说明拼进 Prompt（如放在 {format_instructions} 占位符），模型更容易输出可被解析的 JSON，减少格式错误。
@@ -12,9 +15,12 @@
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 import os
-from langchain.chat_models import init_chat_model 
+from dotenv import load_dotenv
+from langchain.chat_models import init_chat_model
 from loguru import logger
 from pydantic import BaseModel, Field
+
+load_dotenv(encoding="utf-8")
 
 
 class Person(BaseModel):

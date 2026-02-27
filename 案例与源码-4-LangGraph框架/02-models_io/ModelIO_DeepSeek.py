@@ -1,8 +1,12 @@
-# 示例：使用官方 LangChain 集成包 langchain-deepseek 调用 DeepSeek
-# 对应文档 10 章 1.6.2。无需手动写 base_url，SDK 内已封装。
-#
-# 依赖：pip install langchain-deepseek
-# 运行前：在 .env 中配置 deepseek-api
+"""
+【案例】使用 langchain-deepseek 原生集成调用 DeepSeek
+
+对应教程章节：第 11 章 - Model I/O 与模型接入 → 3、接入大模型
+
+知识点速览：
+使用厂商官方集成包时无需手动写 base_url，SDK 内已封装。依赖 pip install langchain-deepseek，
+运行前在 .env 中配置 deepseek-api。
+"""
 
 # ========== 1. 导入与环境 ==========
 import os

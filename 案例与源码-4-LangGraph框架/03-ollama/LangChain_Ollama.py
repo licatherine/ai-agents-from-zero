@@ -1,26 +1,19 @@
 """
-LangChain + Ollama 本地大模型对话示例
+【案例】LangChain + Ollama 本地大模型对话
 
-【这个文件是干什么的？】
-用 Python 调用本机运行的 Ollama 大模型（如 qwen2.5），通过 LangChain 的接口发问题、拿回答。
+对应教程章节：第 12 章 - Ollama 本地部署与调用 → 5、LangChain 整合 Ollama 调用本地大模型
 
-【使用前要准备什么？】
-1. 安装依赖（在终端执行）：
-   pip install -qU langchain-ollama
-   pip install -U ollama
-
-2. 本机要先安装并启动 Ollama，并拉取好模型（如：ollama run qwen:4b）。
-   Ollama 默认在 http://localhost:11434 提供服务。
+知识点速览：
+用 Python 调用本机运行的 Ollama 大模型（如 qwen:4b），通过 langchain_ollama 的 ChatOllama 发问、拿回答，
+无需 API Key，适合本地开发与离线使用。使用前需：① pip install langchain-ollama（及 ollama）；② 本机安装并启动 Ollama，
+拉取模型（如 ollama run qwen:4b）；Ollama 默认在 http://localhost:11434 提供服务。
 """
 
 from langchain_ollama import ChatOllama
 
 # ---------- 第一步：创建“聊天客户端” ----------
-# ChatOllama 是 LangChain 里专门用来和 Ollama 对话的类，可以理解成“连接本地模型的客户端”
-# 参数说明：
-#   base_url  ：Ollama 服务地址，本机默认就是 "http://localhost:11434"
-#   model     ：要用的模型名，必须是你用 ollama 拉取过的，如 "qwen:4b"
-#   reasoning ：是否开启“深度思考”模式；False 表示不开启，回答更快、更省资源
+# ChatOllama 是 LangChain 里专门用来和 Ollama 对话的类，可理解为「连接本地模型的客户端」
+# 参数说明：base_url 为 Ollama 服务地址（本机默认 http://localhost:11434）；model 为已拉取的模型名；reasoning 控制是否开启深度思考模式
 model = ChatOllama(
     base_url="http://localhost:11434",
     model="qwen:4b",

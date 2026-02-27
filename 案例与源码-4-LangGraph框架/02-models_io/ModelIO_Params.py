@@ -1,8 +1,12 @@
-# 示例：模型常用参数在代码中的用法（temperature、max_tokens 等）
-# 对应文档 10 章 1.5.2。演示标准化参数如何影响模型行为（如 temperature 控制随机性）。
-#
-# 依赖：pip install langchain langchain-openai
-# 运行前：在 .env 中配置 deepseek-api
+"""
+【案例】模型标准化参数：temperature、max_tokens 等
+
+对应教程章节：第 11 章 - Model I/O 与模型接入 → 2、模型分类、参数与返回
+
+知识点速览：
+演示 LangChain 标准化参数如何影响模型行为：temperature 控制输出随机性（0 更确定，越大越随机），
+max_tokens 限制单次回复长度。依赖 langchain、langchain-openai，运行前在 .env 中配置 deepseek-api。
+"""
 
 # ========== 1. 导入与环境 ==========
 import os

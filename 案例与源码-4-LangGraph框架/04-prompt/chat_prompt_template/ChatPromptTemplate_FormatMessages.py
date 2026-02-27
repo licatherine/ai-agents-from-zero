@@ -1,6 +1,9 @@
 """
-【案例】from_messages 创建模板 + format_messages / invoke / format 的用法（对应教程 1.7 节）
+【案例】from_messages 创建模板 + format_messages / invoke / format 的用法
 
+对应教程章节：第 13 章 - 提示词与消息模板 → 5、对话提示词模板（ChatPromptTemplate）
+
+知识点速览：
 一、from_messages 是什么？
   - ChatPromptTemplate.from_messages([...]) 是「用消息列表创建对话模板」的常用写法。
   - 列表里每条消息可以是：(role, content) 元组、dict、或 Message 类实例。

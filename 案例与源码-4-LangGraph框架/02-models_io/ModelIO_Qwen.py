@@ -1,9 +1,12 @@
-# 示例：使用 LangChain 通义千问集成（ChatTongyi）调用阿里云百炼
-# 对应文档 10 章 1.6.3。通义也可用 1.6.1 的 ChatOpenAI + base_url 兼容方式，本文件演示原生集成。
-#
-# 依赖：pip install langchain-community dashscope
-# 若报错可尝试：pip install --upgrade --force-reinstall cffi
-# 运行前：在 .env 中配置 aliQwen-api
+"""
+【案例】使用 ChatTongyi 原生集成调用阿里云百炼（通义千问）
+
+对应教程章节：第 11 章 - Model I/O 与模型接入 → 3、接入大模型
+
+知识点速览：
+通义也可用 ChatOpenAI + base_url 兼容方式接入，本案例演示 langchain_community 的 ChatTongyi 原生集成。
+依赖 langchain-community、dashscope；若 cffi 报错可尝试 pip install --upgrade --force-reinstall cffi。运行前配置 aliQwen-api。
+"""
 
 # ========== 1. 导入与环境 ==========
 import os

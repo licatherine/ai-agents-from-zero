@@ -1,6 +1,9 @@
 """
-【案例】用「Message 类」定义 ChatPromptTemplate 的消息（对应教程 1.7.2 节）
+【案例】用「Message 类」定义 ChatPromptTemplate 的消息
 
+对应教程章节：第 13 章 - 提示词与消息模板 → 5、对话提示词模板（ChatPromptTemplate）
+
+知识点速览：
 一、Message 类是什么？
   - LangChain 里用不同「消息类型」区分角色：SystemMessage、HumanMessage、AIMessage。
   - SystemMessage：系统设定（如「你是 AI 助手」）；HumanMessage：用户说的话；AIMessage：模型回复。

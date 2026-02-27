@@ -1,13 +1,11 @@
 """
-【案例】Python 入门：Annotated 与 TypedDict 的「仅类型提示、无运行时校验」（对应教程 2.5 节理解 Annotated）
+【案例】Python 入门：Annotated 与 TypedDict（仅类型提示、无运行时校验）
 
-一、本文件在说明什么？
-  - 用 **typing.TypedDict** 和 **typing.Annotated** 定义 Person，其中 age2 用了 Annotated[int, "年龄，范围0-150"]。
-  - 重点：**Annotated 里的描述（如「年龄，范围0-150」）只是元数据**，给文档、静态类型检查或 LangChain 生成提示用；**Python 运行时不会按这个范围做校验**，所以 age2=188 不会报错。
+对应教程章节：第 14 章 - 输出解析器 → 3、结构化输出（TypedDict / Pydantic / Annotated）
 
-二、为什么 188 不报错？
-  - Annotated 的设计目的是「给类型加注释/元数据」，不是「给类型加运行时校验规则」。
-  - Python 的类型提示（Type Hints）总体是「装饰性」的：运行时只关心是不是 int，不关心 Annotated 里写的范围。若需要运行时校验，要用 Pydantic 等库（见 AnnotatedPydantic.py）。
+知识点速览：
+- Annotated[类型, "描述"] 中的描述只是元数据，供文档、类型检查或 LangChain 生成提示用；Python 运行时不会按描述做校验，故 age2=188 不会报错。
+- 类型提示在运行时总体是「装饰性」的；若需运行时范围校验，要用 Pydantic 的 Field（见 AnnotatedPydantic.py）。
 """
 
 from typing import Annotated, TypedDict

@@ -1,6 +1,13 @@
-# LangChain 1.0+ 使用方式（当前主流推荐）
-# 与 0.3 的区别：1.0 用统一入口 init_chat_model，通过 model_provider 指定「OpenAI 兼容」等，
-# 同一套写法可切换不同厂商模型；接国内平台时必须显式写 model_provider="openai"。
+"""
+【案例】LangChain 1.0 写法：init_chat_model 统一入口调用大模型
+
+对应教程章节：第 10 章 - LangChain 快速上手与 HelloWorld → 4、实战：基于阿里百炼的 HelloWorld
+
+知识点速览：
+- 1.0 推荐用 init_chat_model 作为统一入口，通过 model_provider（如 "openai"）指定厂商，同一套写法可切换模型。
+- 接国内平台（阿里百炼、通义等）时需显式写 model_provider="openai"，否则会报错无法推断 provider。
+- 调用三件套：API Key、模型名、Base URL；invoke(问题) 返回消息对象，.content 取正文。
+"""
 
 # ========== 1. 导入依赖 ==========
 import os

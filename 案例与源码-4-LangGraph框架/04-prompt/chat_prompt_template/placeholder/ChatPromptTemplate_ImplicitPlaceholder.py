@@ -1,6 +1,9 @@
 """
-【案例】隐式使用 MessagesPlaceholder：用 ("placeholder", "{变量名}") 简写（对应教程 1.7.4 节）
+【案例】隐式使用 MessagesPlaceholder：("placeholder", "{变量名}") 简写
 
+对应教程章节：第 13 章 - 提示词与消息模板 → 5、对话提示词模板（ChatPromptTemplate）
+
+知识点速览：
 一、隐式 vs 显式
   - 显式：MessagesPlaceholder("memory")  ← 见 ChatPromptTemplate_ExplicitPlaceholder.py
   - 隐式：("placeholder", "{memory}") 是 MessagesPlaceholder("memory") 的简写，效果相同。

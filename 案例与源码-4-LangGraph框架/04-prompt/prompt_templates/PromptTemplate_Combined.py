@@ -1,10 +1,11 @@
 """
-【第 11 章 - 文本提示词模板：组合多个 Prompt】
-对应笔记：11-提示词与输出解析.md → 1.6 PromptTemplate 的用法（组合使用）
+【案例】文本提示词模板：组合多个 PromptTemplate
+
+对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
 
 知识点速览：
-- 可将多个子 Prompt 按逻辑拼接，形成更长的整体提示（多阶段、多输入源等）。
-- 写法：两个 PromptTemplate 用 + 相加，得到一个新的「组合模板」，再 format 时传入所有占位符。
+- 多个 PromptTemplate 可用 + 按逻辑拼接，形成更长的整体提示（多阶段、多输入源等）。
+- 相加后得到新的「组合模板」，format 时传入所有占位符即可。
 """
 
 from langchain_core.prompts import PromptTemplate

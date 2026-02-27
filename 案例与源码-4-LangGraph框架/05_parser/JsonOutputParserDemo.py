@@ -1,6 +1,9 @@
 """
-【案例】JsonOutputParser 基础用法：在提示词里直接要求返回 JSON（对应教程 2.4.2 节）
+【案例】JsonOutputParser 基础用法：在提示词里直接要求返回 JSON
 
+对应教程章节：第 14 章 - 输出解析器 → 2、常用输出解析器用法
+
+知识点速览：
 一、JsonOutputParser 是什么？
   - 把模型的**自由文本输出**解析成**结构化 JSON**（Python 里就是 dict / list）。
   - 模型若返回的是「像 JSON 的文本」，解析器会尝试解析，得到字典后便于后续逻辑、入库或展示。
@@ -13,8 +16,11 @@
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 import os
+from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from loguru import logger
+
+load_dotenv(encoding="utf-8")
 
 # 在系统消息里直接写明：返回 json，且包含 q（问题）、a（答案）字段
 chat_prompt = ChatPromptTemplate.from_messages([

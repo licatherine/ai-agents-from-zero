@@ -1,6 +1,13 @@
-# LangChain 0.3 版本使用方式（了解即可，目前主推 1.0 写法）
-# 本文件演示：用 LangChain 的「0.3 风格」调用大模型（阿里百炼/通义兼容接口），
-# 从硬编码 → 环境变量 → .env 的三种配置方式，以及 invoke 调用与结果解析。
+"""
+【案例】LangChain 0.x 写法：ChatOpenAI + 三种配置方式（硬编码 / 环境变量 / .env）
+
+对应教程章节：第 10 章 - LangChain 快速上手与 HelloWorld → 4、实战：基于阿里百炼的 HelloWorld
+
+知识点速览：
+- 0.x 写法从各厂商包直接导入具体类（如 ChatOpenAI），通过 base_url 接国内兼容接口。
+- 配置方式演进：硬编码（不推荐）→ 环境变量 → .env + load_dotenv（推荐），避免 API Key 进版本库。
+- invoke 同步调用、response.content 取回复正文。了解即可，当前主推 1.0 的 init_chat_model 写法。
+"""
 
 from langchain_openai import ChatOpenAI  # OpenAI 兼容的聊天模型封装，可配合 base_url 接国内平台
 import os

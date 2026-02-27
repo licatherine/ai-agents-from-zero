@@ -1,8 +1,12 @@
-# 示例：使用 LangChain ChatOpenAI 调用大模型（如通义千问 / 阿里百炼兼容接口）
-# 对应文档 10 章 1.6.1 示例二。可与 Prompt、Chain、Agent、Memory 等无缝配合。
-#
-# 依赖：pip install langchain-openai
-# 运行前：在 .env 中配置 aliQwen-api 或 QWEN_API_KEY
+"""
+【案例】使用 LangChain ChatOpenAI 调用大模型（OpenAI 兼容接口）
+
+对应教程章节：第 11 章 - Model I/O 与模型接入 → 3、接入大模型
+
+知识点速览：
+通过 langchain_openai 的 ChatOpenAI + base_url 接入通义/阿里百炼等兼容接口，
+可与 Prompt、Chain、Agent、Memory 等无缝配合。依赖 langchain-openai，运行前在 .env 中配置 API Key。
+"""
 
 # ========== 1. 导入与环境 ==========
 from langchain_openai import ChatOpenAI

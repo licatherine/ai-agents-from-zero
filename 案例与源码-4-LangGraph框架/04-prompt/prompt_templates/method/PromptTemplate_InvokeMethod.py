@@ -1,10 +1,11 @@
 """
-【第 11 章 - PromptTemplate 的 invoke() 方法】
-对应笔记：11-提示词与输出解析.md → 1.6.1 PromptTemplate 的用法（常用方法）
+【案例】PromptTemplate 的 invoke() 方法
+
+对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
 
 知识点速览：
-- invoke(input)：和 format 类似，传入变量（字典或关键字），但返回的是 **PromptValue** 对象，不是字符串。
-- PromptValue 可 .to_string() 得到字符串，或 .to_messages() 转成消息列表，便于和 LangChain 的链（LCEL）衔接。
+- invoke(input)：传入变量（字典或关键字），返回 PromptValue 对象（非字符串），便于与 LCEL 链衔接。
+- PromptValue 可 .to_string() 得字符串，或 .to_messages() 转成消息列表。
 """
 
 from langchain_core.prompts import PromptTemplate

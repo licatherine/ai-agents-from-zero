@@ -1,6 +1,9 @@
 """
-【案例】显式使用 MessagesPlaceholder：在模板里「预留一段消息」的位置（对应教程 1.7.5 节）
+【案例】显式使用 MessagesPlaceholder：在模板里预留一段消息的位置
 
+对应教程章节：第 13 章 - 提示词与消息模板 → 5、对话提示词模板（ChatPromptTemplate）
+
+知识点速览：
 一、为什么需要「消息占位符」？
   - 有时消息条数、内容要等到「调用时」才知道，例如：把「历史对话」插进当前提示词里。
   - 若不用占位符，就得在代码里手动拼好几条 SystemMessage、HumanMessage、AIMessage，很麻烦。

@@ -1,6 +1,9 @@
 """
-【案例】PydanticOutputParser：用 Pydantic 模型定义输出结构并校验（对应教程 2.4 / 2.5 节）
+【案例】PydanticOutputParser：用 Pydantic 模型定义输出结构并校验
 
+对应教程章节：第 14 章 - 输出解析器 → 3、结构化输出（TypedDict / Pydantic / Annotated）
+
+知识点速览：
 一、PydanticOutputParser 和 JsonOutputParser 的区别？
   - JsonOutputParser：把模型文本解析成「任意」JSON（dict/list），或可绑一个 Pydantic 模型约束形状。
   - PydanticOutputParser：**专门**配合 Pydantic 模型，解析结果会转成** Pydantic 实例**，并可利用 Pydantic 的校验（如字段类型、validator），不合格会抛错。
@@ -10,11 +13,14 @@
 """
 
 import os
+from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator
+
+load_dotenv(encoding="utf-8")
 
 
 class Product(BaseModel):

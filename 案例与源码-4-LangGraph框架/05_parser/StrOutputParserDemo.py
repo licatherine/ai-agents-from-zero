@@ -1,6 +1,9 @@
 """
-【案例】StrOutputParser 字符串解析器（对应教程 2.4.1 节）
+【案例】StrOutputParser 字符串解析器
 
+对应教程章节：第 14 章 - 输出解析器 → 2、常用输出解析器用法
+
+知识点速览：
 一、为什么需要「输出解析器」？
   - 大模型返回的通常是 AIMessage 等对象，直接拿到的可能是整块对象，不方便当字符串用。
   - 输出解析器的作用：把「模型输出」转成程序里好用的形式（如 str、dict、强类型对象）。
@@ -15,10 +18,13 @@
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 import os
+from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from loguru import logger
 
-# 构造对话模板（与 1.7 节 ChatPromptTemplate 用法一致）
+load_dotenv(encoding="utf-8")
+
+# 构造对话模板（与第 13 章 ChatPromptTemplate 用法一致）
 chat_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", "你是一个{role}，请简短回答我提出的问题"),

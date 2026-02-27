@@ -1,10 +1,11 @@
 """
-【第 11 章 - 文本提示词模板：from_template 创建 PromptTemplate】
-对应笔记：11-提示词与输出解析.md → 1.6 文本提示词模板（PromptTemplate）
+【案例】文本提示词模板：from_template 创建 PromptTemplate
+
+对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
 
 知识点速览：
-- from_template("...")：只需传入带占位符的字符串，LangChain 会**自动推断**有哪些变量（即所有 {xxx}），无需手写 input_variables。
-- 适合快速写模板；和构造函数二选一即可。
+- from_template("...")：传入带占位符的字符串即可，LangChain 会自动推断变量（所有 {xxx}），无需手写 input_variables。
+- 适合快速写模板；与构造函数方式二选一即可。format(占位符=值) 得到最终字符串。
 """
 
 from langchain_core.prompts import PromptTemplate

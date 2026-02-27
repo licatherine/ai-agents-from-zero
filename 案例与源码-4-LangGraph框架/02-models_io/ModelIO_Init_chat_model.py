@@ -1,8 +1,12 @@
-# 示例：使用 LangChain 1.0 统一入口 init_chat_model 调用大模型
-# 对应文档 10 章 1.6.1 示例三。一套写法可切换不同厂商（通过 model + base_url + api_key）。
-#
-# 依赖：pip install langchain langchain-openai（或对应 provider 包）
-# 运行前：在 .env 中配置 deepseek-api
+"""
+【案例】使用 init_chat_model 统一入口调用大模型（1.0 推荐写法）
+
+对应教程章节：第 11 章 - Model I/O 与模型接入 → 3、接入大模型
+
+知识点速览：
+一套写法通过 model + base_url + api_key 切换不同厂商，无需改类名。DeepSeek 等可由 base_url 推断
+model_provider，无需显式指定。依赖 langchain、langchain-openai（或对应 provider 包），运行前配置 .env。
+"""
 
 # ========== 1. 导入与环境 ==========
 import os

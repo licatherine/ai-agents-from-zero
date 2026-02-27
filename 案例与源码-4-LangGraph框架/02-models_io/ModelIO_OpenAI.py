@@ -1,8 +1,12 @@
-# 示例：使用 OpenAI 官方 SDK 调用大模型（如 DeepSeek 兼容接口）
-# 对应文档 10 章 1.6.1 示例一。不依赖 LangChain，适合「仅需简单 HTTP 调用」的场景。
-#
-# 依赖：pip install openai
-# 运行前：在 .env 中配置 deepseek-api（或对应平台的 API Key）
+"""
+【案例】使用 OpenAI 官方 SDK 直接调用大模型（不经过 LangChain）
+
+对应教程章节：第 11 章 - Model I/O 与模型接入 → 3、接入大模型
+
+知识点速览：
+适合「仅需简单 HTTP 调用」、不打算用 LangChain 链式组件的场景。依赖 openai 包，
+运行前在 .env 中配置对应平台的 API Key（如 deepseek-api）。
+"""
 
 # ========== 1. 导入与环境 ==========
 import os
