@@ -16,6 +16,7 @@
 .venv/
 venv/
 env/
+.env
 
 # profiling files
 chrome-profiler-events*.json

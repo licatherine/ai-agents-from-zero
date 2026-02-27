@@ -1,0 +1,25 @@
+# 《AI 智能体实战速成指南：从零到企业级落地 | ai-agents-from-zero》：全项目案例依赖
+# 使用方式：在项目根目录执行
+#   macOS/Linux:  python3 -m venv .venv && source .venv/bin/activate
+#   Windows CMD:  python -m venv .venv 然后  .venv\Scripts\activate.bat
+#   Windows PowerShell:  python -m venv .venv 然后  .venv\Scripts\Activate.ps1
+#   激活后:  pip install -r requirements.txt
+
+# ---------- 核心框架（01-helloworld、02-models_io、04-prompt、05_parser 等） ----------
+langchain>=1.2,<2
+langchain-core>=1.2,<2
+langchain-openai>=1.1,<2
+openai>=1.0,<3
+python-dotenv>=1.0
+pydantic>=2.7,<3
+
+# ---------- 社区与厂商集成 ----------
+langchain-community>=0.3,<1
+langchain-deepseek>=0.1
+langchain-ollama>=0.2
+
+# ---------- 通义千问原生 API（02-models_io/ModelIO_Qwen.py 使用 ChatTongyi 时需装） ----------
+dashscope>=1.0
+
+# ---------- 输出解析与日志（05_parser 等） ----------
+loguru>=0.7
