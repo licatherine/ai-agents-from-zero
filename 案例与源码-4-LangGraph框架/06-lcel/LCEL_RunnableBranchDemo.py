@@ -1,18 +1,22 @@
 """
-分支链
-在LangChain中提供了类RunnableBranch来完成LCEL中的条件分支判断，它可以根据输入的不同采用不同的处理逻辑，
-具体示例如下
-会根据用户输入中是否包含英语、韩语等关键词，来选择对应的提示词进行处理。根据判断结果，
-再执行不同的逻辑分支
+【案例】分支链：根据输入条件选择不同子链执行
+
+对应教程章节：第 15 章 - LCEL 与链式调用 → 4.2 RunnableBranch（分支链）
+
+知识点速览：
+- RunnableBranch 实现条件分支：传入若干 (条件, Runnable) 对和一个默认分支；执行时对输入依次求值条件，第一个为 True 的对应子链运行。
+- 典型用法：根据用户输入中的关键词（如「日语」「韩语」）选择不同提示词与子链，实现多语言/多策略分支。
+- 每个分支本身可以是「prompt | model | parser」这样的顺序链，分支链只是在外层做路由。
 """
+import os
+
 from langchain.chat_models import init_chat_model
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from loguru import logger
 from langchain_core.runnables import RunnableBranch
-import os
+from loguru import logger
 
-# 构建提示词
+# 英语分支：提示词模板 + 占位符 query
 english_prompt = ChatPromptTemplate.from_messages([
     ("system", "你是一个英语翻译专家，你叫小英"),
     ("human", "{query}")
@@ -30,7 +34,7 @@ korean_prompt = ChatPromptTemplate.from_messages([
 
 
 def determine_language(inputs):
-    """判断语言种类"""
+    """根据 query 中的关键词判断语言类型，供分支条件使用。"""
     query = inputs["query"]
     if "日语" in query:
         return "japanese"
@@ -40,7 +44,6 @@ def determine_language(inputs):
         return "english"
 
 
-# 初始化模型
 model = init_chat_model(
     model="qwen-plus",
     model_provider="openai",
@@ -48,17 +51,16 @@ model = init_chat_model(
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
 )
 
-# 创建字符串输出解析器，用于处理模型输出
 parser = StrOutputParser()
-# 创建一个可运行的分支链，根据输入文本的语言类型选择相应的处理流程
-# 返回值：RunnableBranch对象，可根据输入动态选择执行路径的可运行链
+
+# RunnableBranch( (条件1, 子链1), (条件2, 子链2), ..., 默认子链 )
+# 条件为可调用对象，接收输入 dict，返回 bool；第一个为 True 的分支会执行
 chain = RunnableBranch(
     (lambda x: determine_language(x) == "japanese", japanese_prompt | model | parser),
     (lambda x: determine_language(x) == "korean", korean_prompt | model | parser),
-    (english_prompt | model | parser)
+    (english_prompt | model | parser)  # 默认分支：英语
 )
 
-# 测试查询
 test_queries = [
     {'query': '请你用韩语翻译这句话:"见到你很高兴"'},
     {'query': '请你用日语翻译这句话:"见到你很高兴"'},
@@ -66,12 +68,9 @@ test_queries = [
 ]
 
 for query_input in test_queries:
-
-    # 判断使用哪个提示词
     lang = determine_language(query_input)
     logger.info(f"检测到语言类型: {lang}")
 
-    # 根据语言类型选择对应的提示词并格式化
     if lang == "japanese":
         chatPromptTemplate = japanese_prompt
     elif lang == "korean":
@@ -79,14 +78,12 @@ for query_input in test_queries:
     else:
         chatPromptTemplate = english_prompt
 
-    #print(query_input) # {'query': '请你用英语翻译这句话:"见到你很高兴"'}
-
-    # 格式化提示词并打印
+    # 仅作演示：格式化后的提示词内容（实际执行时由 chain.invoke 内部完成）
     formatted_messages = chatPromptTemplate.format_messages(**query_input)
     logger.info("格式化后的提示词:")
     for msg in formatted_messages:
         logger.info(f"[{msg.type}]: {msg.content}")
 
-    # 执行链
+    # 一次 invoke：Branch 会根据 query 自动选分支并执行对应子链
     result = chain.invoke(query_input)
     logger.info(f"输出结果: {result}\n")
