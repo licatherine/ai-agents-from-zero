@@ -24,7 +24,7 @@
 
 因此需要**工具（Tool）**机制：由模型决定「要不要调、调哪个、传什么参数」，由我们的代码**真正执行**工具并把结果返回给模型，再由模型组织成自然语言回复。
 
-<img src="images/15/image117.jpeg" alt="大模型不具备直接访问外部数据与执行能力，需通过工具扩展" width="70%" />
+<img src="images/17/17-1-1-1.jpeg" alt="大模型不具备直接访问外部数据与执行能力，需通过工具扩展" width="70%" />
 
 ---
 
@@ -51,7 +51,7 @@
 
 典型流程为：用户提问 → 模型判断是否需要调工具 → 若需要，返回 tool_calls（函数名 + 参数）→ 你的代码执行对应工具 → 将工具结果塞回对话 → 模型根据结果生成最终回复。
 
-![工具调用整体流程：用户输入 → 模型决策 → 执行工具 → 结果回填 → 模型生成回复](images/15/image120.jpeg)
+![工具调用整体流程：用户输入 → 模型决策 → 执行工具 → 结果回填 → 模型生成回复](images/17/17-3-1-1.jpeg)
 
 > **小知识：泳道图 vs 普通流程图（面试可考）**
 
@@ -75,7 +75,7 @@
 
 用 **@tool** 装饰器可以把一个 Python 函数变成 LangChain 的 Tool，模型会通过函数的**名称、文档字符串（description）和参数**来决定是否调用以及如何传参。
 
-![@tool 装饰器将函数转为 Tool，供模型识别与调用](images/15/image121.jpeg)
+![@tool 装饰器将函数转为 Tool，供模型识别与调用](images/17/17-4-1-1.jpeg)
 
 **Tool 常用属性**（了解即可）：可通过 `tool.name`、`tool.description`、`tool.args` 查看；含义如下表。
 
@@ -116,7 +116,7 @@ def add_number(a: int, b: int) -> int:
 # add_number.args 会包含 a、b 的类型与 description
 ```
 
-![Tool 参数与返回的约定](images/15/image123.jpeg)
+![Tool 参数与返回的约定](images/17/17-4-1-2.jpeg)
 
 ### 4.2 基础案例：加法工具
 
@@ -185,7 +185,7 @@ class User(BaseModel):
 
 请求时把「工具列表」（名称、描述、参数 schema）一并发给模型。模型若判断需要查天气，会返回 **function_call** 类型的消息（包含工具名与参数）。你的代码根据返回结果**真正调用**天气 API，再把结果和已有对话一起发给模型，由模型整理成自然语言回复。
 
-![模型返回 tool_calls → 执行工具 → 结果回填 → 模型生成最终回答](images/15/image125.jpeg)
+![模型返回 tool_calls → 执行工具 → 结果回填 → 模型生成最终回答](images/17/17-5-1-1.jpeg)
 
 #### 常见疑问：模型是如何判断「什么时候该调用工具」的？
 
@@ -208,7 +208,7 @@ class User(BaseModel):
 - **步骤**：构建请求、发送 HTTP 请求、解析 JSON、格式化为中文描述。
 - **API Key**：在 https://home.openweathermap.org/api_keys 免费申请，写入 `.env`（如 `OPENWEATHER_API_KEY=xxx`）。天气 API 文档：https://openweathermap.org/
 
-![API Keys](images/15/image130.png)
+![API Keys](images/17/17-5-2-1.png)
 
 ### 5.3 定义天气工具
 

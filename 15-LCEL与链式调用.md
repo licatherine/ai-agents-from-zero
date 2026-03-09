@@ -34,7 +34,7 @@
 - **目标**：无论组件是提示模板、模型、解析器还是整条链，都支持同一套方法（如 `invoke`、`stream`、`batch`），并支持 LCEL 组合。
 - **核心理念**：一切可执行的对象都应有统一的调用方式，从而具备「即插即用」的能力。
 
-![Runnable 在 LangChain 中的定位：统一可执行组件的接口](images/15/image103.jpeg)
+![Runnable 在 LangChain 中的定位：统一可执行组件的接口](images/15/15-1-2-1.jpeg)
 
 > **说明**：上图为 Runnable 的定位示意。Prompt、Model、Parser、Chain 等只要实现 Runnable 接口，就可以用相同方式调用（如 `invoke`）并用管道符 `|` 组合成链。
 
