@@ -140,11 +140,20 @@
 - **多样性测量**：分析相似性分布
 - **分类**：按与标签的相似性对文本分类
 
-### 4.2 阿里云百炼 — 文本嵌入模型
+### 4.2 阿里云百炼：文本嵌入模型
 
 - **控制台与 API**：https://bailian.console.aliyun.com/cn-beijing/?tab=api#/api/?type=model&url=2587654
 
 ![阿里云百炼文本嵌入模型入口与能力](images/18/image139.jpeg)
+
+### 4.2.1 知识点：同一文本、不同模型下的向量内容与维度是否一致
+
+**结论：不一致。** 同一段文本，用**不同的嵌入模型**（例如 text-embedding-v3 与 text-embedding-v4，或不同厂商的模型）得到的向量：
+
+- **向量维度（length）**：一般**不一致**。不同模型有各自固定的输出维度（如 1536、1024、2048），所以 `len(向量)` 会随模型变化；你在代码里看到的「文本向量长度」取决于当前用的模型。
+- **向量内容（各维的数值）**：**不一致**。即使两个模型输出维度相同，同一段文本得到的数字序列也不同，因为训练数据与网络结构不同，向量空间不可直接比较。
+
+**实践建议：** 做检索或相似度比较时，**写入向量库（建索引）与查询必须使用同一嵌入模型**；否则维度可能不匹配会报错，且不同模型的向量空间不可比，相似度结果没有意义。
 
 ### 4.3 案例代码：文本向量化
 
@@ -186,15 +195,21 @@
 
 ---
 
-## 6、Embedding 存入向量数据库（Redis）
+## 6、Embedding 存入向量数据库
 
 将文本转为向量后写入 Redis（或 RedisStack），便于后续做相似性检索。以下示例使用 **langchain_community** 的 Redis 向量存储，或 **langchain_redis** 的 `RedisVectorStore`。
 
 **（1）使用 langchain_community：Document 列表一次性写入**
 
+本案例同时体现**索引**与**检索**：先通过 `Redis.from_documents()` 将文档向量化并写入 Redis（建索引），再通过 `as_retriever()` 得到检索器并用 `invoke(查询文本)` 做相似度检索（查索引）。
+
 【案例源码】`案例与源码-4-LangGraph框架/09-embedding/EmbeddingStoreRedis.py`
 
 [EmbeddingStoreRedis.py](案例与源码-4-LangGraph框架/09-embedding/EmbeddingStoreRedis.py ":include :type=code")
+
+![RedisInsight 中查看写入的文档与向量](images/18/20260311134749.jpg)
+
+**图说明**：运行上述案例后，在 RedisInsight（或 redis-cli）中可看到 Redis 的存储结构。左侧为键列表：形如 `doc:my_index11:<uuid>` 的 HASH 键对应每个被写入的 Document（案例中共 3 条文本，故会有 3 个此类键；点开任一 `doc:my_index11:...`，右侧会显示该键的字段：**content** 为原文（即代码里的 `page_content`，如「通义千问是阿里巴巴研发的大语言模型。」）；**content_vector** 为该段文本经嵌入模型得到的向量（高维浮点数组，图中可能显示为编码后的形态）；**source** 等为元数据（即代码里 `metadata={"source": "manual"}`）。检索时用查询文本的向量与各 `content_vector` 做相似度比较，返回最接近的几条，对应「向量维度与检索效果」：维度由嵌入模型决定，检索效果依赖向量质量与相似度度量。
 
 **（2）使用 langchain_redis：add_texts 写入 + similarity_search_with_score 检索**
 
