@@ -142,4 +142,10 @@
 
 ---
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/image?repos=didilili/ai-agents-from-zero&type=date&legend=top-left)]()
+
+---
+
 **仓库英文名**：`ai-agents-from-zero` · **仓库中文名**：《AI 智能体实战速成指南：从零到企业级落地》
