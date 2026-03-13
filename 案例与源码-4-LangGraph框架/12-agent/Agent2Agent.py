@@ -1,22 +1,14 @@
 """
-基于 Python3.13 和 LangChain1.0 实现Agent-to-Agent（A2A） 协作案例，
-模拟携程订机票、美团订酒店、滴滴打车的跨平台智能协作流程，
-核心是让不同领域的专属 Agent 分工协作、完成完整的出行服务闭环
-模拟用户 “从北京飞上海、订浦东机场附近酒店、从机场打车到酒店” 的完整需求：
+【案例】Agent-to-Agent（A2A）协作：携程订机票 + 美团订酒店 + 滴滴打车
 
-核心设计思路
+对应教程章节：第 21 章 - Agent 智能体 → 5、案例代码
 
-拆分专属 Agent：
-    按业务领域拆分为机票 Agent（携程）、酒店 Agent（美团）、打车 Agent（滴滴），
-    每个 Agent 仅负责自身领域的任务，保证专业性；
-主协调 Agent：
-    新增出行总协调 Agent，作为入口接收用户需求、调度各专属 Agent、整合协作结果、反馈最终结论；
-LangChain1.0 核心组件：
-    使用AgentExecutor实现 Agent 执行、ChatOpenAI作为大模型驱动、Tool封装各 Agent 的核心能力、HumanMessage/AIMessage实现 Agent 间的消息通信；
-模拟业务能力：
-    因无真实平台接口，用模拟函数实现订机票 / 酒店 / 打车的核心逻辑（可直接替换为真实 API）
-
-简单说：A2A 调度 = 多个功能单一的 Runnable 子 Agent 链 + 一个控制调用逻辑的总协调器。
+知识点速览：
+- A2A = 多个专属 Agent 各司其职 + 一个总协调 Agent 负责调度与汇总。本案例中机票/酒店/打车三个
+  子 Agent 分别只绑定一个 @tool，总协调按业务顺序依次 invoke 子链并整合结果，对应教程「5.3 A2A」。
+- 子 Agent 实现方式：Prompt | llm.bind_tools([单个工具]) | output_parser，形成 Runnable 链；
+  总协调用 RunnableLambda 封装「按序调用子链 + 空结果兜底（调用 .func 原始函数）」的逻辑。
+- 规范要点：子 Agent 单一职责、统一 invoke({"input": "..."}) 接口；工具用 @tool(名称, description=...) 并写好参数说明，便于模型正确传参。
 """
 
 import os
@@ -26,7 +18,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 from langchain.tools import tool
 
-# ===================== 通义千问配置（完全不变） =====================
+# ===================== 大模型与输出解析 =====================
 llm = ChatOpenAI(
     model="qwen-plus",
     api_key=os.getenv("aliQwen-api"),
@@ -34,7 +26,7 @@ llm = ChatOpenAI(
 )
 output_parser = StrOutputParser()
 
-# ===================== 模拟业务函数（@tool装饰器） =====================
+# ===================== 模拟业务函数：用 @tool(名称, description=...) 封装，供子 Agent 绑定 =====================
 @tool("CtripBookFlight", description="预订机票的唯一工具，必须调用，参数是departure出发地、arrival目的地、date出行日期（格式2026-02-01）")
 def ctrip_book_flight(departure: str, arrival: str, date: str) -> str:
     """携程订机票：固定返回测试结果"""
@@ -50,9 +42,9 @@ def didi_book_taxi(start: str, end: str, time: str) -> str:
     """滴滴打车：固定返回测试结果"""
     return f"【滴滴打车预约成功】\n起点：{start}\n终点：{end}\n用车时间：{time}\n车型：滴滴快车（舒适型）\n司机姓名：王师傅\n车牌号：沪A12345\n司机电话：13800138000\n预估费用：35元（券后立减5元，实付30元）\n预计接驾时间：16:35\n车型空间：5座，可放2件24寸行李箱"
 
-# ===================== 专属Agent（工具绑定逻辑） =====================
+# ===================== 专属 Agent：每链只绑定一个工具，prompt | llm_with_tools | output_parser = Runnable =====================
 def create_ctrip_agent(llm):
-    llm_with_tools = llm.bind_tools([ctrip_book_flight])
+    llm_with_tools = llm.bind_tools([ctrip_book_flight])  # 仅暴露机票工具，单一职责
     prompt = ChatPromptTemplate.from_messages([
         ("system", "你是专业的工具调用助手，只能调用CtripBookFlight工具，"
                    "调用格式必须正确，"
@@ -84,12 +76,12 @@ def create_didi_agent(llm):
     ])
     return prompt | llm_with_tools | output_parser
 
-# ===================== 总协调Agent =====================
+# ===================== 总协调 Agent：按业务顺序调用子链，空结果时用 .func 兜底 =====================
 def create_travel_coordinator_agent(llm, ctrip_chain, meituan_chain, didi_chain):
-    """总协调：按顺序调用+空值兜底+打印详细测试"""
+    """总协调：按顺序调用子 Agent 链，异常或空结果时调用工具的 .func 原始函数兜底"""
     def a2a_schedule(input_dict):
         print("🔍 开始执行A2A协作测试，依次调用各业务Agent...\n")
-        ctrip_func = ctrip_book_flight.func  # 获取携程工具原始函数
+        ctrip_func = ctrip_book_flight.func  # StructuredTool 的 .func 为原始可调用函数，兜底时直接用
         meituan_func = meituan_book_hotel.func  # 获取美团工具原始函数
         didi_func = didi_book_taxi.func        # 获取滴滴工具原始函数
 
@@ -144,9 +136,9 @@ def create_travel_coordinator_agent(llm, ctrip_chain, meituan_chain, didi_chain)
 """
         return total_report
 
-    return RunnableLambda(a2a_schedule)
+    return RunnableLambda(a2a_schedule)  # 封装为 Runnable，与子 Agent 链一致，可被 invoke
 
-# ===================== 主程序=====================
+# ===================== 主程序：初始化子 Agent 与总协调，执行一次完整行程请求 =====================
 if __name__ == "__main__":
     try:
         # 初始化各专属Agent
@@ -176,24 +168,5 @@ if __name__ == "__main__":
               "1. 通义密钥是否正确 2. 网络能否访问阿里云 3. LangChain版本是否为1.0.0")
 
 
-'''
-案例总结：
-
-简单说：A2A 调度 = 多个功能单一的 Runnable 子 Agent 链 + 一个控制调用逻辑的总协调器。
-
-
-模板核心固定规范（LangChain 1.0 A2A 调度最佳实践）
-以下规范是模板能稳定运行的关键，无需修改，严格遵循即可：
-1. 子 Agent 规范
-单一职责：一个子 Agent 只负责一个业务，只绑定一个专属工具；
-统一接口：所有子 Agent 都封装为Prompt | 绑定工具的LLM | output_parser的 Runnable 链，对外仅暴露invoke()方法；
-明确 Prompt：必须指定专属工具、参数值、强制返回结果，避免大模型歧义。
-2. 总协调 Agent 规范
-统一调度：所有子 Agent 的调用都由总协调 Agent 控制，子 Agent 之间不直接交互；
-稳定性保障：每个子 Agent 调用都加try-except，且对空结果做兜底（调用@tool的原始函数）；
-统一输入：所有 Agent 的调用参数均为{"input": 字符串}，符合 LangChain 1.0 的 Runnable 规范。
-3. 工具封装规范
-装饰器必用：用@tool(工具名, description=工具描述)封装业务函数，替代旧版Tool类；
-原始函数提取：兜底时通过工具对象.func获取原始可调用函数，解决StructuredTool不可调用问题；
-描述准确：工具的description必须明确参数名、参数说明，大模型通过描述识别参数。
-'''
+# 实践要点（A2A 稳定运行）：子 Agent 单一职责、统一 invoke({"input": "..."})；
+# 总协调统一调度并做 try-except + 空结果兜底（.func）；@tool 的 description 写清参数便于模型传参。

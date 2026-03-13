@@ -1,21 +1,34 @@
+"""
+【案例】使用 FastMCP 官方库搭建 MCP 服务端（工具 / 资源 / 提示词）
+
+对应教程章节：第 20 章 - MCP 模型上下文协议 → 6、案例实战：本地 MCP 天气服务与客户端
+
+知识点速览：
+- FastMCP 是 MCP 的 Python 官方实现之一，通过 @mcp.tool()、@mcp.resource()、@mcp.prompt() 暴露
+  工具、静态资源和提示词模板，对应教程中「MCP 能做什么」：统一接入工具与上下文。
+- 传输模式：本示例使用 transport=\"stdio\"，即通过标准输入/输出与客户端通信，适合本地、命令行场景；
+  若用 transport=\"sse\" 则基于 HTTP 长连接，适合独立部署、多客户端访问。
+- 注意：部分 FastMCP 依赖可能要求 Python 3.12 及以下；若遇 pywin32 等报错，可参考仓库中的 McpServer.py 极简实现。
+"""
+
 # pip install mcp
-# pip install pywin32
+# pip install pywin32  # Windows 下部分功能需要
 from mcp.server.fastmcp import FastMCP
 
-# 创建 MCP 实例
+# 创建 MCP 实例，对应「MCP 服务器」角色
 mcp = FastMCP("Demo")
 
-# 为 MCP 实例添加工具
+# 为 MCP 实例添加工具：客户端可调用 add(a, b) 获取两数之和
 @mcp.tool()
 def add(a: int, b: int) -> int:
     return a + b
 
-# 为 MCP 实例添加资源
+# 为 MCP 实例添加资源：通过 URI greeting://default 访问静态内容
 @mcp.resource("greeting://default")
 def get_greeting() -> str:
     return "Hello from static resource!"
 
-# 为 MCP 实例添加提示词
+# 为 MCP 实例添加提示词模板：客户端可传入 name、style 生成不同风格的问候语
 @mcp.prompt()
 def greet_user(name: str, style: str = "friendly") -> str:
     styles = {
@@ -26,14 +39,24 @@ def greet_user(name: str, style: str = "friendly") -> str:
     return f"为{name}{styles.get(style, styles['friendly'])}"
 
 if __name__ == "__main__":
+    # STDIO 模式：与主进程通过标准输入/输出通信，适合本地集成。
+    # 注意：直接运行本脚本时，没有 MCP 客户端连接，stdin 收到终端输入（如回车）会被当 JSON 解析，
+    # 导致 Invalid JSON / Internal Server Error，属预期现象。正确用法是由 Cursor/Claude 等 MCP 客户端
+    # 启动本进程并接管 stdin/stdout，或使用 transport="sse" 以 HTTP 方式对外服务。
     mcp.run(transport="stdio")
 
 
 """
-import pywintypes
-ModuleNotFoundError: No module named 'pywintypes'
+常见问题（保留供排查）：
 
+方案 1：若出现 ModuleNotFoundError: No module named 'pywintypes'
+- Windows 下部分依赖需要 pywin32，可尝试：pip install pywin32
 
 方案 2：等待 pywin32 适配 Python 3.13（被动，无需改动环境）
-如果不想降级 Python 版本，可以等待 pywin32 官方发布支持 Python 3.13 系列的版本：
+- 若不想降级 Python 版本，可等待 pywin32 官方发布支持 Python 3.13 的版本；
+  或使用本仓库中的 McpServer.py 极简实现（无 FastMCP，适配更多 Python 版本）。
+
+方案 3：直接运行脚本报 Invalid JSON / Internal Server Error
+- STDIO 模式需由 MCP 客户端（如 Cursor、Claude Desktop）启动本进程并接管 stdin/stdout；
+  在终端单独运行时没有客户端发送 JSON-RPC，收到回车等会解析失败，属正常现象。
 """

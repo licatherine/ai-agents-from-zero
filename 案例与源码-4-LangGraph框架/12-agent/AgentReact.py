@@ -1,10 +1,23 @@
+"""
+【案例】ReAct 模式：推理 + 行动的多步工具调用（产品搜索与库存查询）
+
+对应教程章节：第 21 章 - Agent 智能体 → 5、案例代码
+
+知识点速览：
+- ReAct（Reason + Act）：Agent 在每轮先「思考」再「行动」——分析用户需求 → 选择工具并传入参数 →
+  观察工具返回 → 根据结果决定继续调用工具或给出最终答案，对应教程「1、Tool 与 Agent 的关系」中的 ReAct 循环图。
+- 本案例提供两个 Tool：search_products（按类别查产品）、check_inventory（查库存）；Agent 自主决定
+  调用顺序与次数（如先搜索再查库存），体现「多步、有条件」的决策能力。
+- 通过 result['messages'] 可追踪完整对话：AIMessage（含 tool_calls）、ToolMessage（工具输出）、最终 AIMessage（文本回答）。
+"""
+
 import os
 
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
 from langchain.tools import tool
 
-# 模拟产品数据库
+# 模拟产品数据库：类别 -> 产品列表（id、name、popularity、price）
 PRODUCT_DATABASE = {
     "无线耳机": [
         {"id": "WH-1000XM5", "name": "索尼 WH-1000XM5", "popularity": 95, "price": 299},
@@ -25,7 +38,7 @@ PRODUCT_DATABASE = {
     ]
 }
 
-# 模拟库存数据库
+# 模拟库存：产品 ID -> 库存数量与仓位
 INVENTORY_DATABASE = {
     "WH-1000XM5": {"stock": 10, "location": "仓库-A"},
     "QC45": {"stock": 0, "location": "仓库-B"},
@@ -41,20 +54,17 @@ INVENTORY_DATABASE = {
 }
 
 
-# 工具1：搜索产品
 @tool
 def search_products(query: str) -> str:
-    """搜索产品并返回按受欢迎度排序的结果"""
+    """搜索产品并返回按受欢迎度排序的结果（Tool：能力封装，供 Agent 调用）"""
     print(f"🔍 [工具调用] search_products('{query}')")
 
-    # 关键词映射，支持多种中文表达方式
     keyword_mapping = {
         "无线耳机": ["无线耳机", "蓝牙耳机", "头戴式耳机", "耳机"],
         "游戏鼠标": ["游戏鼠标", "电竞鼠标", "鼠标"],
         "笔记本电脑": ["笔记本电脑", "笔记本", "手提电脑", "电脑"]
     }
 
-    # 查找匹配的类别
     matched_category = None
     for category, keywords in keyword_mapping.items():
         if any(keyword in query for keyword in keywords):
@@ -63,37 +73,33 @@ def search_products(query: str) -> str:
 
     if matched_category and matched_category in PRODUCT_DATABASE:
         products = PRODUCT_DATABASE[matched_category]
-        # 按受欢迎度排序
         sorted_products = sorted(products, key=lambda x: x['popularity'], reverse=True)
         result = f"找到 {len(sorted_products)} 个匹配 '{query}' 的产品:\n"
-
         for i, product in enumerate(sorted_products, 1):
             result += f"{i}. {product['name']} (ID: {product['id']}) - 受欢迎度: {product['popularity']}% - ￥{product['price']}\n"
-
         return result
+    return "未找到匹配产品"
 
 
-# 工具2：检查库存
 @tool
 def check_inventory(product_id: str) -> str:
-    """检查特定产品的库存状态"""
+    """检查特定产品的库存状态（Tool：能力封装）"""
     print(f"📦 [工具调用] check_inventory('{product_id}')")
 
     if product_id in INVENTORY_DATABASE:
         stock_info = INVENTORY_DATABASE[product_id]
         status = "有库存" if stock_info['stock'] > 0 else "缺货"
         return f"产品 {product_id}: {status} ({stock_info['stock']} 件库存) - 位置: {stock_info['location']}"
-    else:
-        return f"未找到产品ID: {product_id}"
+    return f"未找到产品ID: {product_id}"
 
 
-# 创建代理
 model = ChatOpenAI(
     model="qwen-plus",
     api_key=os.getenv("aliQwen-api"),
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
 )
 
+# 系统提示中明确 ReAct：先推理、再选工具、基于结果继续推理直至得到完整答案
 agent = create_agent(
     model,
     tools=[search_products, check_inventory],
@@ -106,7 +112,7 @@ agent = create_agent(
     保持推理步骤简洁明了。"""
 )
 
-# 测试案例1：无线耳机搜索
+# 测试：一次问题可能触发多轮「推理 → 选工具 → 观察 → 再推理」
 result1 = agent.invoke({
     "messages": [{"role": "user", "content": "查找当前最受欢迎的无线耳机并检查是否有库存"}]
 })
@@ -118,10 +124,7 @@ for msg in result1['messages']:
         print(f"{msg.__class__.__name__}: {msg.content}")
 print("=" * 40)
 
-print()
-print()
-
-# # 详细追踪ReAct循环过程
+# 可选：逐条解析 messages，观察 ReAct 循环（AIMessage.tool_calls、ToolMessage、最终 AIMessage）
 def track_react_cycle(messages):
     print("ReAct循环步骤分析:")
     step = 1
@@ -137,5 +140,4 @@ def track_react_cycle(messages):
         elif msg_type == "AIMessage" and not (hasattr(msg, 'tool_calls') and msg.tool_calls):
             print(f"\n✅ 最终回答: {msg.content}")
 
-# 追踪案例1的ReAct循环
 track_react_cycle(result1['messages'])
