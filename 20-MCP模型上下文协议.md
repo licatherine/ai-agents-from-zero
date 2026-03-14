@@ -4,13 +4,13 @@
 
 **本章课程目标：**
 
-- 理解 **MCP（Model Context Protocol，模型上下文协议）** 是什么、解决什么痛点，以及和 Tool / RAG 的定位区别。
+- 理解 **MCP（Model Context Protocol，模型上下文协议）** 是什么、解决什么痛点，以及和 [Tool](17-Tools工具调用.md) / [RAG](19-RAG检索增强生成.md) 的定位区别。
 - 掌握 MCP 的客户端-服务器架构与两种通信模式（STDIO / SSE），能阅读和编写简单的 MCP 配置与本地服务端/客户端示例。
-- 通过本地 MCP 天气服务与客户端案例，理解 MCP 的「工具暴露与调用」流程，为后续学习 [第 21 章 - Agent 智能体](21-Agent智能体.md) 打基础。
+- 通过本地 MCP 天气服务与客户端案例，理解 MCP 的「工具暴露与调用」流程，为后续学习 [第 21 章 Agent 智能体](21-Agent智能体.md) 打基础。
 
-**前置知识建议：** 已学习 [第 17 章 - Tools 工具调用](17-Tools工具调用.md)，了解 Tool / Function Calling 的基本概念与 `@tool`、`bind_tools` 的用法；建议已学 [第 9 章 - LangChain 概述与架构](9-LangChain概述与架构.md)、[第 1-3 章 - RAG、微调、续训与智能体](1-3-RAG、微调、续训与智能体.md) 中关于智能体与 MCP 的概述。
+**前置知识建议：** 已学习 [第 17 章 Tools 工具调用](17-Tools工具调用.md)，了解 Tool / Function Calling 的基本概念与 `@tool`、`bind_tools` 的用法；建议已学 [第 9 章 LangChain 概述与架构](9-LangChain概述与架构.md)、[第 1-3 章 RAG、微调、续训与智能体](1-3-RAG、微调、续训与智能体.md) 中关于智能体与 MCP 的概述。
 
-**学习建议：** 先建立「为什么需要 MCP」的直观印象，再按「MCP 概念 → 架构与传输模式 → 本地案例」顺序学习；案例需 Python 3.12 及以下时会在文中标明。
+**学习建议：** 先建立「为什么需要 MCP」的直观印象，再按「MCP 概念 → 架构与传输模式 → 本地案例」顺序学习；案例需 Python 3.12 及以下时会在文中标明。**与前后章衔接**：[第 17 章](17-Tools工具调用.md) 讲的是单进程内 Tool 的定义与调用，本章讲工具如何按**协议**跨进程/跨应用暴露与发现；学完本章后 [第 21 章 Agent](21-Agent智能体.md) 会演示如何把 MCP 提供的工具交给 Agent 使用。
 
 ---
 
@@ -237,7 +237,7 @@ if __name__ == "__main__":
 ### 6.1 环境与依赖
 
 - 安装示例中用到的库（如 `httpx`、`loguru` 等）；若使用 `langchain-mcp-adapters`，请按官方说明安装并注意 Python 版本。
-- 天气接口需 OpenWeather API Key，可写入 `.env`（如 `OPENWEATHER_API_KEY=xxx`），参见 [第 17 章 - Tools 工具调用](17-Tools工具调用.md) 中的天气助手准备。
+- 天气接口需 OpenWeather API Key，可写入 `.env`（如 `OPENWEATHER_API_KEY=xxx`），参见 [第 17 章 Tools 工具调用](17-Tools工具调用.md) 中的天气助手准备。
 
 ### 6.2 MCP 服务端（天气查询）
 
@@ -246,7 +246,7 @@ if __name__ == "__main__":
 - **目标**：把「查天气」等能力封装成 MCP 工具，供客户端按协议发现与调用；服务端负责「注册并暴露」工具。
 - **两种实现**：① 不用 FastMCP（本仓库 McpServer.py）：手写服务类与 `@mcp.tool()`，只演示工具注册思路，无真实网络监听，适合学原理、兼容高版本 Python。② 用 FastMCP（McpServerByFastMCP.py）：官方库提供 `@mcp.tool()` / `@mcp.resource()` / `@mcp.prompt()` 及 STDIO/SSE 传输，可被 Cursor/Claude 等标准客户端连接，需 `pip install mcp`。
 - **传输方式**：STDIO = 标准输入/输出，需由客户端进程启动本进程；SSE = HTTP 长连接，可独立部署。直接运行 STDIO 服务会因无客户端发 JSON 而报 Invalid JSON，属正常。
-- **与第 17 章 Tool 的关系**：Tool 是单进程内能力封装；MCP 服务端是把「工具」按协议暴露出去，供跨进程/跨应用调用。
+- **与 [第 17 章 Tool](17-Tools工具调用.md) 的关系**：Tool 是单进程内能力封装；MCP 服务端是把「工具」按协议暴露出去，供跨进程/跨应用调用。
 
 ---
 
@@ -364,6 +364,6 @@ if __name__ == "__main__":
 
 - **MCP** 是规范「大模型与外部工具/数据源」连接的**标准化协议**，解决接口不统一、重复开发、协作难等问题；可类比「大模型版的 OpenFeign」或 AI 世界的「万能适配器」。架构上采用客户端-服务器模型，常见传输模式有 **STDIO**（本地/进程内）和 **SSE**（网络、流式）。
 - 学习时可通过本地 MCP 天气服务端与客户端（`McpServer.py`、`McpClient.py`）理解「工具暴露与调用」；多服务场景可配合 `mcp.json` 与 LangChain MCP 适配器（注意 Python 版本与依赖）。
-- **定位速记**：Tool 让大模型能用工具；RAG 让大模型获得检索上下文；**MCP** 让大模型与工具/服务之间的连接标准化、可复用。与 Agent、Function Calling 等的详细对比见 [第 21 章 - Agent 智能体](21-Agent智能体.md) 第 6 节。
+- **定位速记**：[Tool](17-Tools工具调用.md) 让大模型能用工具；[RAG](19-RAG检索增强生成.md) 让大模型获得检索上下文；**MCP** 让大模型与工具/服务之间的连接标准化、可复用。与 [Agent](21-Agent智能体.md)、Function Calling 等的详细对比见 [第 21 章 Agent 智能体](21-Agent智能体.md) 第 6 节。
 
-**建议下一步：** 在本地跑通 `McpServer.py` 与 `McpClient.py`，巩固 MCP 的配置与调用；接着学习 [第 21 章 - Agent 智能体](21-Agent智能体.md)，理解 Tool 与 Agent 的配合及 ReAct、A2A 等案例。若需更复杂的图编排与多步工作流，可继续学习 **LangGraph** 相关章节。MCP 在 Java 生态也有实现，可参考 B 站视频（74–80 集）：https://www.bilibili.com/video/BV1pvWGznEqh。
+**建议下一步：** 在本地跑通 `McpServer.py` 与 `McpClient.py`，巩固 MCP 的配置与调用；接着学习 [第 21 章 Agent 智能体](21-Agent智能体.md)，理解 [Tool](17-Tools工具调用.md) 与 Agent 的配合及 ReAct、A2A 等案例。若需更复杂的图编排与多步工作流，可继续学习 **LangGraph** 相关章节。MCP 在 Java 生态也有实现，可参考 B 站视频（74–80 集）：https://www.bilibili.com/video/BV1pvWGznEqh。

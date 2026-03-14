@@ -6,15 +6,15 @@
 
 - 理解 **Ollama** 是什么、能做什么，以及如何获取程序与模型。
 - 掌握 Ollama 的**安装与配置**（含自定义路径、模型存储目录）、**常用命令**及**安装与验证模型**的步骤。
-- 学会使用 **LangChain**（`langchain-ollama` 的 `ChatOllama`）调用本地 Ollama 服务，无需 API Key，适合本地开发与离线使用。
+- 学会使用 **LangChain**（`langchain-ollama` 的 `ChatOllama`）调用本地 Ollama 服务，无需 API Key，适合本地开发与离线使用。本章是 [第 11 章 Model I/O](11-Model-I-O与模型接入.md) 中「模型」一环的**本地接入方式**，与云端 API 互为补充。
 
-**前置知识建议：** 已学习 [第 9 章 - LangChain 概述与架构](9-LangChain概述与架构.md)、[第 10 章 - LangChain 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)、[第 11 章 - Model I/O 与模型接入](11-Model-I-O与模型接入.md)，了解 LangChain 的定位与模型调用方式。
+**前置知识建议：** 已学习 [第 9 章 LangChain 概述与架构](9-LangChain概述与架构.md)、[第 10 章 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)、[第 11 章 Model I/O 与模型接入](11-Model-I-O与模型接入.md)，了解 LangChain 的定位与模型调用方式。
 
 ---
 
 ## 1、Ollama 介绍与资源
 
-本章介绍如何使用 **Ollama** 在本地运行大模型，并配合 **LangChain** 进行调用。与云端 API 相比，Ollama 适合本地开发、离线体验和隐私场景。
+本章介绍如何使用 **Ollama** 在本地运行大模型，并配合 [LangChain](9-LangChain概述与架构.md) 进行调用。与 [云端 API 调用](10-LangChain快速上手与HelloWorld.md)（需 API Key）相比，Ollama 无需密钥、适合本地开发、离线体验和隐私场景。
 
 **LangChain 与 Ollama 集成文档**：https://docs.langchain.com/oss/python/integrations/chat/ollama
 
@@ -46,7 +46,7 @@ Ollama 就是让你**在自己电脑上跑大模型**的一个免费、开源小
 
 ### 1.4 安装后基本使用（命令行）
 
-安装完成后，在终端执行：`ollama pull <模型名>` 拉取模型，`ollama run <模型名>` 进入对话；需要给 LangChain 等调用时，保持 Ollama 运行即可，默认会提供本地 API。详细步骤见 **第 2 节 安装与配置** 及后续小节。
+安装完成后，在终端执行：`ollama pull <模型名>` 拉取模型，`ollama run <模型名>` 进入对话；需要给 LangChain 等调用时，保持 Ollama 运行即可，默认会提供本地 API。详细步骤见 **第 2 节 安装与配置** 及 **第 3 节 常用命令**。
 
 ---
 
@@ -54,7 +54,7 @@ Ollama 就是让你**在自己电脑上跑大模型**的一个免费、开源小
 
 ### 2.1 自定义 Ollama 安装路径与模型存储目录
 
-若希望将 Ollama 或模型文件安装到非默认目录（例如 D 盘或大容量磁盘），可先自定义安装路径，再设置**模型存储目录**。**Windows 下建议不要装到 C 盘**，以免程序与模型占满系统盘；安装时或安装前将安装路径与模型目录设到 D 盘等其它盘符即可。
+若希望将 Ollama 或模型文件安装到非默认目录（例如 D 盘或大容量磁盘），可先自定义安装路径，再设置**模型存储目录**。**Windows 下建议不要装到 C 盘**，以免程序与模型占满系统盘；安装时或安装前将安装路径与模型目录设到 D 盘等其他盘符即可。
 
 ![自定义 Ollama 安装路径的配置步骤](images/12/12-2-1-1.gif)
 
@@ -157,7 +157,7 @@ pip install -U ollama
 
 [LangChain_Ollama.py](案例与源码-4-LangGraph框架/03-ollama/LangChain_Ollama.py ":include :type=code")
 
-若需与 **Prompt 模板、Chain、Agent** 等结合，只需将上面的 `llm` 传入对应组件即可，与使用 `ChatOpenAI` 的方式一致。
+若需与 [提示词模板](13-提示词与消息模板.md)、[链（LCEL）](15-LCEL与链式调用.md)、[Agent](21-Agent智能体.md) 等结合，只需将上面的 `llm` 传入对应组件即可，与使用 [ChatOpenAI](11-Model-I-O与模型接入.md) 的方式一致。
 
 ---
 
@@ -165,6 +165,6 @@ pip install -U ollama
 
 - **Ollama** 用于在本地一键运行开源大模型；安装后通过 `ollama pull`、`ollama run` 等命令拉取与运行模型，默认提供本地 API（端口 11434）。
 - **安装与配置**：可自定义安装路径与模型存储目录（环境变量 `OLLAMA_MODELS`），便于管理与迁移。
-- **LangChain 整合**：通过 **langchain-ollama** 的 `ChatOllama` 在 LangChain 中调用本地模型，无需 API Key，与 `ChatOpenAI` 用法一致，可接入 Prompt、Chain、Agent 等组件。
+- **LangChain 整合**：通过 **langchain-ollama** 的 `ChatOllama` 在 LangChain 中调用本地模型，无需 API Key，与 [第 11 章](11-Model-I-O与模型接入.md) 的 `ChatOpenAI` 用法一致，可接入 [提示词](13-提示词与消息模板.md)、[链](15-LCEL与链式调用.md)、[Agent](21-Agent智能体.md) 等组件。
 
-**建议下一步：** 学习 [第 13 章 - 提示词与消息模板](13-提示词与消息模板.md)、[第 14 章 - 输出解析器](14-输出解析器.md)，与第 11 章的 Model I/O 三件套形成完整的「输入 → 模型 → 输出解析」闭环。
+**建议下一步：** 学习 [第 13 章 提示词与消息模板](13-提示词与消息模板.md)、[第 14 章 输出解析器](14-输出解析器.md)，与 [第 11 章 Model I/O](11-Model-I-O与模型接入.md) 形成完整的「输入 → 模型 → 输出解析」闭环；再用 [第 15 章 LCEL 与链式调用](15-LCEL与链式调用.md) 将三件套串成链。
