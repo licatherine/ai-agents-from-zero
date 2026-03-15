@@ -1,16 +1,16 @@
-# 23 - LangGraph Graph API 与 State
+# 23 - LangGraphAPI：图与状态
 
 ---
 
 **本章课程目标：**
 
 - 理解 Graph API 中「图」的正式定义与有向图在工作流中的作用，会构建多节点、固定边的完整图并运行案例。
-- 理解 **State** 的组成（Schema + Reducer）、在节点间的传递方式，以及 **state_schema / input_schema / output_schema** 三要素的含义与用法。
+- 理解 **State** 的组成（**Schema + Reducer**）、在节点间的传递方式，以及 **state_schema / input_schema / output_schema** 三要素的含义与用法；掌握 **Reducer（规约函数）** 的常见类型（默认覆盖、add_messages、operator.add/mul、自定义），能根据业务选择合并策略。
 - 会使用 **TypedDict** 或 **Pydantic BaseModel** 定义 State，能根据场景选型；会通过 `input_schema`、`output_schema` 限制图的输入输出接口。
 
 **前置知识建议：** 已学习 [第 22 章 LangGraph 概述与快速入门](22-LangGraph概述与快速入门.md)，掌握 LangGraph 四要素（State、Nodes、Edges、Graph）、图的六步构建流程，并至少跑通 HelloWorld 或 LangGraphBiz 案例。
 
-**学习建议：** 先通读「什么是图」「什么是 State」建立概念，再按顺序运行 BuildWholeGraphSummary、DefState、StateSchema 三个案例；Schema 三要素与 TypedDict/BaseModel 对比可作查阅参考。
+**学习建议：** 先通读「什么是图」「什么是 State」建立概念，再按顺序跑通 BuildWholeGraphSummary、DefState、Reducer 案例与 StateSchema。**Node（节点）、Edge（边）与 Send/Command/Runtime 等高级控制**见 [第 24 章 LangGraph Graph API 之 Node、Edge 与高级控制](24-LangGraphGraphAPI-Node与Edge与高级控制.md)。
 
 ---
 
@@ -80,7 +80,82 @@
 
 ![graph.invoke 调用流程：input_schema 验证 → START → 普通节点（state_schema）→ END → output_schema 过滤 → 返回](images/22/image26.jpeg)
 
-### 2.4 State 的类型：TypedDict 与 Pydantic BaseModel
+### 2.4 State 的组成：Reducer（规约函数）
+
+前面 2.1 已说明：State 由 **Schema** 与 **Reducer** 组成；Schema 描述状态有哪些字段与类型，**Reducer 规定节点产生的更新如何合并到当前状态**。本节展开 Reducer 的用法与常见类型，与 Schema 一起构成「State 组成」的完整图景。
+
+#### 2.4.1 什么是 Reducer
+
+**知识出处：** https://docs.langchain.com/oss/javascript/langgraph/graph-api#reducers
+
+在 LangGraph 中，**Reducer（规约函数）** 决定**节点产生的更新如何作用到 State**。State 中的每个字段都可以拥有自己的规约函数；若未显式指定，则**默认对该字段的更新为覆盖**——后执行节点返回的值会直接覆盖先执行节点的值。
+
+- **状态合并策略**：State 在工作流中贯穿所有节点、共享数据；每个节点可读取并更新 State。Reducer 定义多个节点之间对同一字段的更新方式（覆盖、合并、追加等）。
+- **Reducer 的作用**：控制状态更新方式；处理并行更新时的数据一致性；支持覆盖、追加、相加等策略；支持自定义合并逻辑，便于构建复杂工作流与并行执行场景。
+
+![Reducer 决定节点更新如何作用到 State；有向图与状态流转示意](images/23/image29.jpeg)
+
+#### 2.4.2 default：未指定 Reducer 时使用覆盖更新
+
+【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_Default.py`
+
+[StateReducer_Default.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_Default.py ":include :type=code")
+
+#### 2.4.3 add_messages：用于消息列表追加
+
+对话场景中需要将多轮消息**追加**到列表。使用 `Annotated[List, add_messages]`，节点只返回增量消息，由 `add_messages` 规约器自动追加。
+
+【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_AddMessages.py`
+
+[StateReducer_AddMessages.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_AddMessages.py ":include :type=code")
+
+#### 2.4.4 operator.add：列表/字符串/数值追加
+
+`operator.add` 作为 Reducer 时，对列表做 extend、对字符串做连接、对数值做累加。
+
+**列表追加：**
+
+【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_OperatorAdd.py`
+
+[StateReducer_OperatorAdd.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_OperatorAdd.py ":include :type=code")
+
+**字符串连接：**
+
+【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_OperatorAdd2.py`
+
+[StateReducer_OperatorAdd2.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_OperatorAdd2.py ":include :type=code")
+
+**数值累加：**
+
+【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_OperatorAdd3.py`
+
+[StateReducer_OperatorAdd3.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_OperatorAdd3.py ":include :type=code")
+
+#### 2.4.5 operator.mul：数值相乘
+
+使用 `operator.mul` 时要注意：LangGraph 会用类型默认值（如 float 的 0.0）先做一次规约，导致 `0.0 * 初始值 = 0`，后续乘法始终为 0。**建议对乘法使用自定义 Reducer**，将「第一次」的 current 视为单位元 1.0。
+
+【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_OperatorMul.py`
+
+[StateReducer_OperatorMul.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_OperatorMul.py ":include :type=code")
+
+#### 2.4.6 自定义 Reducer
+
+当内置 Reducer 不满足需求时（如 operator.mul 的初始值问题），可自定义规约函数：签名为 `(current, update) -> new_value`，在函数内处理「第一次」等边界。
+
+【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_Custom.py`
+
+[StateReducer_Custom.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_Custom.py ":include :type=code")
+
+#### 2.4.7 多种策略并存（家庭作业）
+
+同一 State 中可对不同字段使用不同 Reducer（如 messages 用 add_messages，tags 用 operator.add，score 用 operator.add）。下面案例供自行阅读与运行。
+
+【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducersMyChatBot家庭作业.py`
+
+[StateReducersMyChatBot 家庭作业.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducersMyChatBot家庭作业.py ":include :type=code")
+
+### 2.5 State 的类型：TypedDict 与 Pydantic BaseModel
 
 State 可以是 **TypedDict**，也可以是 **Pydantic 的 BaseModel**。下表对比两者，便于选型；在 LangGraph 中通常**推荐使用 TypedDict** 作为 State 类型，简单轻量、无额外运行时校验开销。
 
@@ -93,7 +168,7 @@ State 可以是 **TypedDict**，也可以是 **Pydantic 的 BaseModel**。下表
 
 两种写法在 LangGraph 里都能参与图的编译，只需按规则声明字段即可。
 
-### 2.5 输入输出 Schema 示例（StateSchema.py）
+### 2.6 输入输出 Schema 示例（StateSchema.py）
 
 下面案例演示如何通过 `input_schema` 和 `output_schema` 限制图的输入与输出类型，实现「调用时只传 question，返回时只拿 answer」的接口，适合需要明确对外契约的场景。
 
@@ -105,8 +180,8 @@ State 可以是 **TypedDict**，也可以是 **Pydantic 的 BaseModel**。下表
 
 **本章小结：**
 
-- **Graph API（图）**：图由有向的**节点**和**边**组成，定义工作流的执行步骤与顺序；构建流程与第 22 章一致，BuildWholeGraphSummary 案例演示了多节点、固定边下状态（`process_data`）的传递。
-- **State**：由 **Schema** 与 **Reducer** 组成，是节点间共享的「单一事实来源」；**state_schema** 为图的完整内部状态，**input_schema** / **output_schema** 可选的子集，用于约束图的输入输出接口；`graph.invoke` 会先按 input_schema 过滤输入、再经节点处理、最后按 output_schema 过滤输出。
-- **State 类型**：常用 **TypedDict**（轻量、推荐），也可用 **pydantic.BaseModel**（校验、嵌套、描述更强）；DefState 演示基本定义，StateSchema 演示 input/output schema 的用法。
+- **Graph API（图）**：图由有向的**节点**和**边**组成，定义工作流的执行步骤与顺序；构建流程与第 22 章一致；BuildWholeGraphSummary 案例见 `02-graph/`。
+- **State**：由 **Schema** 与 **Reducer** 组成，是节点间共享的「单一事实来源」。**Schema**：state_schema 为完整内部状态，input_schema / output_schema 为可选的输入输出子集。**Reducer**：规定节点更新如何合并（默认覆盖；add_messages 消息追加；operator.add 列表/字符串/数值；operator.mul 需注意默认 0；自定义 Reducer；多策略并存）。DefState、StateSchema、Reducer 案例见 `03-state/`。
+- **State 类型**：常用 TypedDict（轻量），也可用 pydantic.BaseModel（校验、嵌套更强）。
 
-**建议下一步：** 在本地运行 BuildWholeGraphSummary、DefState、StateSchema，并尝试修改 State 字段或增加 input_schema/output_schema；若需深入 **Reducer**（如消息列表的追加方式），可学习本仓库中 `案例与源码-3-LangGraph框架/03-state/reducers` 下的 Reducer 示例；若需条件分支、循环或多智能体，可继续学习后续 LangGraph 进阶章节（条件边、子图、Agent 节点等）。
+**建议下一步：** 在本地运行 BuildWholeGraphSummary、DefState、Reducer 案例与 StateSchema，并尝试修改 State 字段或 Reducer 类型；接着学习 [第 24 章 LangGraph Graph API 之 Node、Edge 与高级控制](24-LangGraphGraphAPI-Node与Edge与高级控制.md)，掌握节点、边与 Send/Command/Runtime。
