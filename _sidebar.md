@@ -47,5 +47,7 @@
   - [第 19 章 RAG 检索增强生成](19-RAG检索增强生成.md)
   - [第 20 章 MCP 模型上下文协议](20-MCP模型上下文协议.md)
   - [第 21 章 Agent 智能体](21-Agent智能体.md)
+  - [第 22 章 LangGraph 概述与快速入门](22-LangGraph概述与快速入门.md)
+  - [第 23 章 LangGraph Graph API 与 State](23-LangGraphGraphAPI与State.md)
 
 - [更新日志](教程更新日志.md)
