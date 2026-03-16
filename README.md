@@ -17,7 +17,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-Project-181717?logo=github&logoColor=white)](https://github.com/didilili/ai-agents-from-zero/)
 [![Read Online](https://img.shields.io/badge/在线阅读-点击访问-blue?logo=bookstack)](https://didilili.github.io/ai-agents-from-zero/#/)
 
-[仓库说明](README.md#📖-关于本仓库) • [教程大纲](教程目录大纲.md) • [案例汇总](教程案例链接汇总.md#教程案例链接汇总源码与在线演示) • [更新日志](教程更新日志.md) • [新手入门与常见问题](新手入门与常见问题.md)
+[快速开始](README.md#-快速开始) • [仓库说明](README.md#📖-关于本仓库) • [教程大纲](教程目录大纲.md) • [案例汇总](教程案例链接汇总.md#教程案例链接汇总源码与在线演示) • [更新日志](教程更新日志.md) • [新手入门与常见问题](新手入门与常见问题.md)
 
   <p>
     <a href="https://didilili.github.io/ai-agents-from-zero/#/">📚 在线阅读</a>
@@ -120,6 +120,42 @@
 
 ---
 
+## 🚀 快速开始
+
+想马上跑通一个案例？按下面几步即可。更详细的环境说明、API 申请、常见报错处理见 [新手入门与常见问题](新手入门与常见问题.md)。
+
+1. **克隆仓库并进入项目目录**
+
+   ```bash
+   git clone https://github.com/didilili/ai-agents-from-zero.git
+   cd ai-agents-from-zero
+   ```
+
+2. **准备环境**（推荐 Python 3.10，支持 3.10–3.13）
+
+   ```bash
+   python3.10 -m venv .venv
+   source .venv/bin/activate          # macOS/Linux
+   # .venv\Scripts\activate           # Windows CMD
+   pip install -r requirements.txt
+   ```
+
+3. **配置 API Key**
+
+   - 将根目录下的 `.env-example` 复制为 `.env`
+   - 在 `.env` 中填入你的 API Key（如通义千问/阿里百炼、DeepSeek 等），变量名需与代码一致（如 `aliQwen-api`、`QWEN_API_KEY`、`deepseek-api`）
+   - 各平台 Key 的申请方式见 [新手入门与常见问题 - 各 API 平台如何申请 Key](新手入门与常见问题.md#_5、各-api-平台如何申请-key？)
+
+4. **在项目根目录运行第一个案例**
+   ```bash
+   python 案例与源码-2-LangChain框架/01-helloworld/StandardDesc.py
+   ```
+   ⚠️ 必须在**项目根目录**执行 `python`，否则会读不到 `.env`。若不想用云 API，可使用 [Ollama 本地模型](新手入门与常见问题.md#_54-不想用云-api：用本地-ollama（无需-key）)（无需 Key）。
+
+遇到 `ModuleNotFoundError`、API Key 报错、找不到 `.env` 等，请查看 [新手入门与常见问题 - 常见问题与解决](新手入门与常见问题.md#_6、常见问题与解决)。
+
+---
+
 ## 📖 关于本仓库
 
 - **教程来源**：尚硅谷《大模型智能体线上速成班》
@@ -132,13 +168,6 @@
 
 - 教程目录与章节对应关系见 **`0-课程目录大纲.md`**
 - 各章详细笔记按章节编号组织（如 `1-大模型智能体概述.md`、`2-RAG-搭建企业私有&个人知识库.md`、`3-基于Coze&Dify平台的智能体开发.md` 等）
-
----
-
-## ⚠️ 说明
-
-- 本仓库以**学习与笔记**为主，课件版权归属尚硅谷，请勿用于商业用途。
-- 笔记为个人整理，若有疏漏或更新，欢迎提 Issue 或 PR 交流。
 
 ---
 
