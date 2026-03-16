@@ -54,48 +54,50 @@ print()
 # 打印图的可视化结构，生成更加美观的Mermaid 代码，通过processon 编辑器查看
 print(app.get_graph().draw_mermaid())
 
-# 【输出示例】
-# {('subtraction', '__end__'), ('addition', 'subtraction'), ('__start__', 'addition')}
-# {'addition': StateNodeSpec(runnable=addition(tags=None, recurse=True, explode_args=False, func_accepts={}), metadata=None, input_schema=<class 'dict'>, retry_policy=None, cache_policy=None, ends=(), defer=False), 'subtraction': StateNodeSpec(runnable=subtraction(tags=None, recurse=True, explode_args=False, func_accepts={}), metadata=None, input_schema=<class 'dict'>, retry_policy=None, cache_policy=None, ends=(), defer=False)}
-# 加法节点收到的初始值:{'x': 5}
-# 减法节点收到的初始值:{'x': 6}
-# 最后的结果是:{'x': 4}
-#  +-----------+
-#  | __start__ |
-#  +-----------+
-#         *
-#         *
-#         *
-#   +----------+
-#   | addition |
-#   +----------+
-#         *
-#         *
-#         *
-# +-------------+
-# | subtraction |
-# +-------------+
-#         *
-#         *
-#         *
-#   +---------+
-#   | __end__ |
-#   +---------+
-# None
+"""
+【输出示例】
+{('subtraction', '__end__'), ('addition', 'subtraction'), ('__start__', 'addition')}
+{'addition': StateNodeSpec(runnable=addition(tags=None, recurse=True, explode_args=False, func_accepts={}), metadata=None, input_schema=<class 'dict'>, retry_policy=None, cache_policy=None, ends=(), defer=False), 'subtraction': StateNodeSpec(runnable=subtraction(tags=None, recurse=True, explode_args=False, func_accepts={}), metadata=None, input_schema=<class 'dict'>, retry_policy=None, cache_policy=None, ends=(), defer=False)}
+加法节点收到的初始值:{'x': 5}
+减法节点收到的初始值:{'x': 6}
+最后的结果是:{'x': 4}
+ +-----------+
+ | __start__ |
+ +-----------+
+        *
+        *
+        *
+  +----------+
+  | addition |
+  +----------+
+        *
+        *
+        *
++-------------+
+| subtraction |
++-------------+
+        *
+        *
+        *
+  +---------+
+  | __end__ |
+  +---------+
+None
 
-# ---
-# config:
-#   flowchart:
-#     curve: linear
-# ---
-# graph TD;
-#         __start__([<p>__start__</p>]):::first
-#         addition(addition)
-#         subtraction(subtraction)
-#         __end__([<p>__end__</p>]):::last
-#         __start__ --> addition;
-#         addition --> subtraction;
-#         subtraction --> __end__;
-#         classDef default fill:#f2f0ff,line-height:1.2
-#         classDef first fill-opacity:0
-#         classDef last fill:#bfb6fc
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+        __start__([<p>__start__</p>]):::first
+        addition(addition)
+        subtraction(subtraction)
+        __end__([<p>__end__</p>]):::last
+        __start__ --> addition;
+        addition --> subtraction;
+        subtraction --> __end__;
+        classDef default fill:#f2f0ff,line-height:1.2
+        classDef first fill-opacity:0
+        classDef last fill:#bfb6fc
+"""

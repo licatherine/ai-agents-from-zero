@@ -54,6 +54,9 @@ full_chain = chain1 | (lambda content: {"input": content}) | chain2
 result = full_chain.invoke({"topic": "langchain"})
 logger.info(result)
 
-# 【输出实例】
-# 2026-03-06 10:24:22.765 | INFO     | __main__:<module>:38 - LangChain 是一个开源框架，用于构建基于大语言模型（LLM）的应用程序。它提供模块化组件（如链、代理、记忆、工具集成等），帮助开发者轻松连接 LLM 与外部数据源（如数据库、API）、实现对话状态管理、支持多步推理与工具调用，从而快速开发智能应用（如问答系统、AI 助手、自动化工作流）。核心理念是“编排”——将 LLM 作为通用接口，协同其他软件能力。
-# 2026-03-06 10:24:27.723 | INFO     | __main__:<module>:53 - LangChain is an open-source framework for building applications powered by large language models (LLMs). It provides modular components—such as chains, agents, memory, and tool integrations—that help developers easily implement prompt engineering, external data integration (e.g., Retrieval-Augmented Generation, or RAG), multi-step reasoning, conversation state management, and more—thereby enhancing the controllability and practicality of LLM-powered applications.
+"""
+【输出实例】
+2026-03-06 10:24:22.765 | INFO     | __main__:<module>:38 - LangChain 是一个开源框架，用于构建基于大语言模型（LLM）的应用程序。它提供模块化组件（如链、代理、记忆、工具集成等），帮助开发者轻松连接 LLM 与外部数据源（如数据库、API）、实现对话状态管理、支持多步推理与工具调用，从而快速开发智能应用（如问答系统、AI 助手、自动化工作流）。核心理念是“编排”——将 LLM 作为通用接口，协同其他软件能力。
+2026-03-06 10:24:27.723 | INFO     | __main__:<module>:53 - LangChain is an open-source framework for building applications powered by large language models (LLMs). It provides modular components—such as chains, agents, memory, and tool integrations—that help developers easily implement prompt engineering, external data integration (e.g., Retrieval-Augmented Generation, or RAG), multi-step reasoning, conversation state management, and more—thereby enhancing the controllability and practicality of LLM-powered applications.
+"""
+

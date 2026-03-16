@@ -28,9 +28,12 @@ print()
 # 查看工具常用属性（教程 4.1 表格中的 name、description、args）
 print(f"{add_number.name=}\n{add_number.description=}\n{add_number.args=}")
 
-# 【输出示例】
-# 13
-#
-# add_number.name='add_number'
-# add_number.description='两个整数相加'
-# add_number.args={'a': {'title': 'A', 'type': 'integer'}, 'b': {'title': 'B', 'type': 'integer'}}
+"""
+【输出示例】
+13
+
+add_number.name='add_number'
+add_number.description='两个整数相加'
+add_number.args={'a': {'title': 'A', 'type': 'integer'}, 'b': {'title': 'B', 'type': 'integer'}}
+"""
+

@@ -29,6 +29,9 @@ completion = client.embeddings.create(model="text-embedding-v4", input=input_tex
 
 print(completion.model_dump_json())
 
-# 【输出示例】
-# 注：embedding共1024维度，即len(completion.data[0].embedding) == 1024
-# {"data":[{"embedding":[0.02258586511015892,-0.08700370043516159,-0.013521800749003887,-0.05904024466872215,0.027100207284092903,-0.03104848973453045,0.01432843878865242,0.01706676371395588,'.....'],"index":0,"object":"embedding"}],"model":"text-embedding-v4","object":"list","usage":{"prompt_tokens":6,"total_tokens":6},"id":"37989997-27b1-9416-98af-091ae0b5c118"}
+"""
+【输出示例】
+注：embedding共1024维度，即len(completion.data[0].embedding) == 1024
+{"data":[{"embedding":[0.02258586511015892,-0.08700370043516159,-0.013521800749003887,-0.05904024466872215,0.027100207284092903,-0.03104848973453045,0.01432843878865242,0.01706676371395588,'.....'],"index":0,"object":"embedding"}],"model":"text-embedding-v4","object":"list","usage":{"prompt_tokens":6,"total_tokens":6},"id":"37989997-27b1-9416-98af-091ae0b5c118"}
+"""
+

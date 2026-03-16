@@ -36,13 +36,16 @@ print("page_content 示例:", docs_split[0].page_content)
 print("metadata 示例:", docs_split[0].metadata)
 
 
-# 【输出示例】
-# === 方式一：整行作为 page_content ===
-# page_content 示例: id: 1
-# title: Introduction to Python
-# content: Python is a popular programming lan...
-# metadata 示例: {'source': 'assets/sample.csv', 'row': 0}
+"""
+【输出示例】
+=== 方式一：整行作为 page_content ===
+page_content 示例: id: 1
+title: Introduction to Python
+content: Python is a popular programming lan...
+metadata 示例: {'source': 'assets/sample.csv', 'row': 0}
+"""
 
 # === 方式二：content 列作为正文，title/author 进 metadata ===
 # page_content 示例: content: Python is a popular programming language.
 # metadata 示例: {'source': 'assets/sample.csv', 'row': 0, 'title': 'Introduction to Python', 'author': 'John Doe'}
+

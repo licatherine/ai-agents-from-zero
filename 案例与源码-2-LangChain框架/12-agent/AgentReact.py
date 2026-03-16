@@ -160,9 +160,11 @@ def track_react_cycle(messages):
 
 track_react_cycle(result1["messages"])
 
-# 【输出案例】
-# 🔍 [工具调用] search_products('无线耳机')
-# 📦 [工具调用] check_inventory('WH-1000XM5')
+"""
+【输出案例】
+🔍 [工具调用] search_products('无线耳机')
+📦 [工具调用] check_inventory('WH-1000XM5')
+"""
 
 # ========================================
 # 📊 最终结果:
@@ -198,3 +200,4 @@ track_react_cycle(result1["messages"])
 #    📋  观察结果: 产品 WH-1000XM5: 有库存 (10 件库存) - 位置: 仓库-A...
 
 # ✅ 最终回答: 索尼 WH-1000XM5 是当前最受欢迎的无线耳机，受欢迎度为95%，且有库存（10件），存放于仓库-A。
+

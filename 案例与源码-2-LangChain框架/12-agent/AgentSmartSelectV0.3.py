@@ -80,8 +80,10 @@ result = agent_executor.invoke(
 
 print(result)
 
-# 【输出示例】
-# > Entering new AgentExecutor chain...
+"""
+【输出示例】
+> Entering new AgentExecutor chain...
+"""
 
 # Invoking: `get_weather` with `{'loc': 'Beijing'}`
 
@@ -103,3 +105,4 @@ print(result)
 
 # > Finished chain.
 # {'input': '请问今天北京和上海的天气怎么样，哪个城市更热？', 'output': '今天北京和上海的天气情况如下：\n\n- **北京**：阴，多云，当前气温为 **10.49°C**，体感温度约 **8.51°C**，湿度较低（35%），风速较小（0.49 m/s）。\n- **上海**：晴，当前气温为 **15.34°C**，体感温度约 **13.5°C**，湿度更低（22%），风速稍大（3.06 m/s），天空无云。\n\n**对比来看，上海更热**，当前气温比北京高约 **4.85°C**，且阳光充足，体感也更温暖。\n\n如需未来几天预报或穿衣建议，欢迎随时告诉我！ 😊'}
+

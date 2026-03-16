@@ -25,8 +25,11 @@ prompt_all = prompt_a + prompt_b
 prompt2 = prompt_all.format(topic="LangChain", length=200)
 print(prompt2)
 
-# 【输出示例】
-# 请用一句话介绍LangChain，要求通俗易懂
-# 内容不超过100个字
-# 请用一句话介绍LangChain，要求通俗易懂
-# 内容不超过200个字
+"""
+【输出示例】
+请用一句话介绍LangChain，要求通俗易懂
+内容不超过100个字
+请用一句话介绍LangChain，要求通俗易懂
+内容不超过200个字
+"""
+

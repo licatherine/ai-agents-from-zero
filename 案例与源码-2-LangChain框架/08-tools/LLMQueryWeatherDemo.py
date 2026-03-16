@@ -55,8 +55,11 @@ full_chain = get_weather_chain | (lambda x: {"weather_json": x}) | output_chain
 result = full_chain.invoke("请问北京今天的天气如何？")
 logger.info(result)
 
-# 【输出示例】
-# {"coord": {"lon": 116.3972, "lat": 39.9075}, "weather": [{"id": 800, "main": "Clear", "description": "\u6674", "icon": "01d"}], "base": "stations", "main": {"temp": 10.76, "feels_like": 8.26, "temp_min": 10.76, "temp_max": 10.76, "pressure": 1033, "humidity": 14, "sea_level": 1033, "grnd_level": 1027}, "visibility": 10000, "wind": {"speed": 1.6, "deg": 232, "gust": 2.63}, "clouds": {"all": 0}, "dt": 1773034935, "sys": {"country": "CN", "sunrise": 1773009388, "sunset": 1773051236}, "timezone": 28800, "id": 1816670, "name": "Beijing", "cod": 200}
-# 2026-03-09 13:45:53.809 | INFO     | __main__:<module>:57 - 北京现在天气：晴，气温 10.8℃，体感偏凉（约 8.3℃），湿度仅 14%，非常干燥，微风（西南风，2.3 米/秒），云量 0%，能见度极佳，达 10 公里。
-# 日出时间：约 05:56，日落时间：约 18:13（北京时间）。
-# 建议添件薄外套，注意保湿润肤，适合户外活动。
+"""
+【输出示例】
+{"coord": {"lon": 116.3972, "lat": 39.9075}, "weather": [{"id": 800, "main": "Clear", "description": "\u6674", "icon": "01d"}], "base": "stations", "main": {"temp": 10.76, "feels_like": 8.26, "temp_min": 10.76, "temp_max": 10.76, "pressure": 1033, "humidity": 14, "sea_level": 1033, "grnd_level": 1027}, "visibility": 10000, "wind": {"speed": 1.6, "deg": 232, "gust": 2.63}, "clouds": {"all": 0}, "dt": 1773034935, "sys": {"country": "CN", "sunrise": 1773009388, "sunset": 1773051236}, "timezone": 28800, "id": 1816670, "name": "Beijing", "cod": 200}
+2026-03-09 13:45:53.809 | INFO     | __main__:<module>:57 - 北京现在天气：晴，气温 10.8℃，体感偏凉（约 8.3℃），湿度仅 14%，非常干燥，微风（西南风，2.3 米/秒），云量 0%，能见度极佳，达 10 公里。
+日出时间：约 05:56，日落时间：约 18:13（北京时间）。
+建议添件薄外套，注意保湿润肤，适合户外活动。
+"""
+

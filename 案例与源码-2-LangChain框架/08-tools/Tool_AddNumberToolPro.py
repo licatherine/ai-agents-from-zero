@@ -37,9 +37,12 @@ logger.info(f"return_direct = {add_number.return_direct}")
 res = add_number.invoke({"a": 1, "b": 2})
 logger.info(res)
 
-# 【输出示例】
-# name = add_number
-# args = {'a': {'description': '第1个参数', 'title': 'A', 'type': 'integer'}, 'b': {'description': '第2个参数', 'title': 'B', 'type': 'integer'}}
-# description = 定义加法运算所需的参数信息（或函数 docstring）
-# return_direct = False
-# 3
+"""
+【输出示例】
+name = add_number
+args = {'a': {'description': '第1个参数', 'title': 'A', 'type': 'integer'}, 'b': {'description': '第2个参数', 'title': 'B', 'type': 'integer'}}
+description = 定义加法运算所需的参数信息（或函数 docstring）
+return_direct = False
+3
+"""
+

@@ -22,8 +22,11 @@ print("langchainfile:" + langchain.__file__)
 # 当前 Python 解释器版本（如 3.10.x），用于确认运行环境
 print(sys.version)
 
-# 【输出示例】
-# langchainVersion:  1.2.9
-# langchain_communityVersion:  0.4.1
-# langchainfile:/Users/tools/PyCharmMiscProject/python100/.venv/lib/python3.10/site-packages/langchain/__init__.py
-# 3.10.19 (main, Oct  9 2025, 15:25:03) [Clang 17.0.0 (clang-1700.6.3.2)]
+"""
+【输出示例】
+langchainVersion:  1.2.9
+langchain_communityVersion:  0.4.1
+langchainfile:/Users/tools/PyCharmMiscProject/python100/.venv/lib/python3.10/site-packages/langchain/__init__.py
+3.10.19 (main, Oct  9 2025, 15:25:03) [Clang 17.0.0 (clang-1700.6.3.2)]
+"""
+

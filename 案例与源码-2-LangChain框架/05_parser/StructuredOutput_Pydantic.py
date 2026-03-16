@@ -72,10 +72,13 @@ response = parser.invoke(result)
 logger.info(f"解析后的结构化结果:\n{response}")
 logger.info(f"结果类型: {type(response)}")  # <class 'Product'>
 
-# 【输出示例】
-# 2026-02-27 15:02:47.018 | INFO     | __main__:<module>:53 - [SystemMessage(content='你是一个AI助手，你只能输出结构化的json数据\nThe output should be formatted as a JSON instance that conforms to the JSON schema below.\n\nAs an example, for the schema {"properties": {"foo": {"title": "Foo", "description": "a list of strings", "type": "array", "items": {"type": "string"}}}, "required": ["foo"]}\nthe object {"foo": ["bar", "baz"]} is a well-formatted instance of the schema. The object {"properties": {"foo": ["bar", "baz"]}} is not well-formatted.\n\nHere is the output schema:\n```\n{"description": "产品信息：名称、类别、简介。简介长度需 ≥ 10，由下方 validator 校验。", "properties": {"name": {"description": "产品名称", "title": "Name", "type": "string"}, "category": {"description": "产品类别", "title": "Category", "type": "string"}, "description": {"description": "产品简介", "title": "Description", "type": "string"}}, "required": ["name", "category", "description"]}\n```', additional_kwargs={}, response_metadata={}), HumanMessage(content='请你输出标题为：华为Mate X7的新闻内容', additional_kwargs={}, response_metadata={})]
-# 2026-02-27 15:02:51.175 | INFO     | __main__:<module>:63 - 模型原始输出:
-# {"name": "华为Mate X7", "category": "智能手机", "description": "华为Mate X7是一款全新折叠屏旗舰手机，搭载麒麟9010芯片与HarmonyOS 4.2系统，配备8英寸内屏与6.5英寸外屏，支持5G网络与超高速充电技术。"}
-# 2026-02-27 15:02:51.175 | INFO     | __main__:<module>:67 - 解析后的结构化结果:
-# name='华为Mate X7' category='智能手机' description='华为Mate X7是一款全新折叠屏旗舰手机，搭载麒麟9010芯片与HarmonyOS 4.2系统，配备8英寸内屏与6.5英寸外屏，支持5G网络与超高速充电技术。'
-# 2026-02-27 15:02:51.175 | INFO     | __main__:<module>:68 - 结果类型: <class '__main__.Product'>
+"""
+【输出示例】
+2026-02-27 15:02:47.018 | INFO     | __main__:<module>:53 - [SystemMessage(content='你是一个AI助手，你只能输出结构化的json数据\nThe output should be formatted as a JSON instance that conforms to the JSON schema below.\n\nAs an example, for the schema {"properties": {"foo": {"title": "Foo", "description": "a list of strings", "type": "array", "items": {"type": "string"}}}, "required": ["foo"]}\nthe object {"foo": ["bar", "baz"]} is a well-formatted instance of the schema. The object {"properties": {"foo": ["bar", "baz"]}} is not well-formatted.\n\nHere is the output schema:\n```\n{"description": "产品信息：名称、类别、简介。简介长度需 ≥ 10，由下方 validator 校验。", "properties": {"name": {"description": "产品名称", "title": "Name", "type": "string"}, "category": {"description": "产品类别", "title": "Category", "type": "string"}, "description": {"description": "产品简介", "title": "Description", "type": "string"}}, "required": ["name", "category", "description"]}\n```', additional_kwargs={}, response_metadata={}), HumanMessage(content='请你输出标题为：华为Mate X7的新闻内容', additional_kwargs={}, response_metadata={})]
+2026-02-27 15:02:51.175 | INFO     | __main__:<module>:63 - 模型原始输出:
+{"name": "华为Mate X7", "category": "智能手机", "description": "华为Mate X7是一款全新折叠屏旗舰手机，搭载麒麟9010芯片与HarmonyOS 4.2系统，配备8英寸内屏与6.5英寸外屏，支持5G网络与超高速充电技术。"}
+2026-02-27 15:02:51.175 | INFO     | __main__:<module>:67 - 解析后的结构化结果:
+name='华为Mate X7' category='智能手机' description='华为Mate X7是一款全新折叠屏旗舰手机，搭载麒麟9010芯片与HarmonyOS 4.2系统，配备8英寸内屏与6.5英寸外屏，支持5G网络与超高速充电技术。'
+2026-02-27 15:02:51.175 | INFO     | __main__:<module>:68 - 结果类型: <class '__main__.Product'>
+"""
+

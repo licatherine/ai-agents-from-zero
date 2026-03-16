@@ -76,58 +76,61 @@ if __name__ == "__main__":
     logger.info("启动 MCP 天气客户端...")
     run_client_demo()
 
-# 【输出示例】
-# 2026-03-13 11:09:46.119 | INFO     | __main__:<module>:75 - 启动 MCP 天气客户端...
-# 2026-03-13 11:09:46.119 | INFO     | __main__:run_client_demo:57 - 初始化 MCP 天气客户端...
-# 2026-03-13 11:09:46.119 | INFO     | __main__:run_client_demo:63 -
-# ========== 查询 Beijing 天气 ==========
-# 2026-03-13 11:09:46.119 | INFO     | __main__:check_tool_availability:32 - 工具 'get_weather' 可用
-# 2026-03-13 11:09:46.830 | INFO     | McpServer:get_weather:84 - 查询 Beijing 天气结果：{'coord': {'lon': 116.3972, 'lat': 39.9075}, 'weather': [{'id': 804, 'main': 'Clouds', 'description': '阴，多云', 'icon': '04d'}], 'base': 'stations', 'main': {'temp': 4.94, 'feels_like': 4.03, 'temp_min': 4.94, 'temp_max': 4.94, 'pressure': 1027, 'humidity': 41, 'sea_level': 1027, 'grnd_level': 1021}, 'visibility': 10000, 'wind': {'speed': 1.39, 'deg': 6, 'gust': 1.02}, 'clouds': {'all': 100}, 'dt': 1773371280, 'sys': {'type': 1, 'id': 9609, 'country': 'CN', 'sunrise': 1773354606, 'sunset': 1773397087}, 'timezone': 28800, 'id': 1816670, 'name': 'Beijing', 'cod': 200}
-# 2026-03-13 11:09:46.830 | INFO     | __main__:call_get_weather:46 - 成功获取 Beijing 天气数据，返回结果长度：570
-# 格式化天气结果：
-# {
-#     "coord": {
-#         "lon": 116.3972,
-#         "lat": 39.9075
-#     },
-#     "weather": [
-#         {
-#             "id": 804,
-#             "main": "Clouds",
-#             "description": "阴，多云",
-#             "icon": "04d"
-#         }
-#     ],
-#     "base": "stations",
-#     "main": {
-#         "temp": 4.94,
-#         "feels_like": 4.03,
-#         "temp_min": 4.94,
-#         "temp_max": 4.94,
-#         "pressure": 1027,
-#         "humidity": 41,
-#         "sea_level": 1027,
-#         "grnd_level": 1021
-#     },
-#     "visibility": 10000,
-#     "wind": {
-#         "speed": 1.39,
-#         "deg": 6,
-#         "gust": 1.02
-#     },
-#     "clouds": {
-#         "all": 100
-#     },
-#     "dt": 1773371280,
-#     "sys": {
-#         "type": 1,
-#         "id": 9609,
-#         "country": "CN",
-#         "sunrise": 1773354606,
-#         "sunset": 1773397087
-#     },
-#     "timezone": 28800,
-#     "id": 1816670,
-#     "name": "Beijing",
-#     "cod": 200
-# }
+"""
+【输出示例】
+2026-03-13 11:09:46.119 | INFO     | __main__:<module>:75 - 启动 MCP 天气客户端...
+2026-03-13 11:09:46.119 | INFO     | __main__:run_client_demo:57 - 初始化 MCP 天气客户端...
+2026-03-13 11:09:46.119 | INFO     | __main__:run_client_demo:63 -
+========== 查询 Beijing 天气 ==========
+2026-03-13 11:09:46.119 | INFO     | __main__:check_tool_availability:32 - 工具 'get_weather' 可用
+2026-03-13 11:09:46.830 | INFO     | McpServer:get_weather:84 - 查询 Beijing 天气结果：{'coord': {'lon': 116.3972, 'lat': 39.9075}, 'weather': [{'id': 804, 'main': 'Clouds', 'description': '阴，多云', 'icon': '04d'}], 'base': 'stations', 'main': {'temp': 4.94, 'feels_like': 4.03, 'temp_min': 4.94, 'temp_max': 4.94, 'pressure': 1027, 'humidity': 41, 'sea_level': 1027, 'grnd_level': 1021}, 'visibility': 10000, 'wind': {'speed': 1.39, 'deg': 6, 'gust': 1.02}, 'clouds': {'all': 100}, 'dt': 1773371280, 'sys': {'type': 1, 'id': 9609, 'country': 'CN', 'sunrise': 1773354606, 'sunset': 1773397087}, 'timezone': 28800, 'id': 1816670, 'name': 'Beijing', 'cod': 200}
+2026-03-13 11:09:46.830 | INFO     | __main__:call_get_weather:46 - 成功获取 Beijing 天气数据，返回结果长度：570
+格式化天气结果：
+{
+    "coord": {
+        "lon": 116.3972,
+        "lat": 39.9075
+    },
+    "weather": [
+        {
+            "id": 804,
+            "main": "Clouds",
+            "description": "阴，多云",
+            "icon": "04d"
+        }
+    ],
+    "base": "stations",
+    "main": {
+        "temp": 4.94,
+        "feels_like": 4.03,
+        "temp_min": 4.94,
+        "temp_max": 4.94,
+        "pressure": 1027,
+        "humidity": 41,
+        "sea_level": 1027,
+        "grnd_level": 1021
+    },
+    "visibility": 10000,
+    "wind": {
+        "speed": 1.39,
+        "deg": 6,
+        "gust": 1.02
+    },
+    "clouds": {
+        "all": 100
+    },
+    "dt": 1773371280,
+    "sys": {
+        "type": 1,
+        "id": 9609,
+        "country": "CN",
+        "sunrise": 1773354606,
+        "sunset": 1773397087
+    },
+    "timezone": 28800,
+    "id": 1816670,
+    "name": "Beijing",
+    "cod": 200
+}
+"""
+

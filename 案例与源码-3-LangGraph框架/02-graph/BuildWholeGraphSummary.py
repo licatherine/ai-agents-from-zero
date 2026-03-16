@@ -73,55 +73,58 @@ print("=================================")
 print(app.get_graph().draw_mermaid())
 
 
-# 【输出实例】
-# input_node 节点执行 state.get('process_data'): {'name': '测试数据', 'value': 123456}
-# process_node 节点执行 state.get('process_data'): {'input': 'input_value'}
-# output_node 节点执行 state.get('process_data'): {'process': 'process_value9527'}
-# 最后的结果是:{'process_data': {'process': 'process_value9527'}}
-# +-----------+
-# | __start__ |
-# +-----------+
-#       *
-#       *
-#       *
-#   +-------+
-#   | input |
-#   +-------+
-#       *
-#       *
-#       *
-#  +---------+
-#  | process |
-#  +---------+
-#       *
-#       *
-#       *
-#   +--------+
-#   | output |
-#   +--------+
-#       *
-#       *
-#       *
-#  +---------+
-#  | __end__ |
-#  +---------+
-# None
-# =================================
-# ---
-# config:
-#   flowchart:
-#     curve: linear
-# ---
-# graph TD;
-#         __start__([<p>__start__</p>]):::first
-#         input(input)
-#         process(process)
-#         output(output)
-#         __end__([<p>__end__</p>]):::last
-#         __start__ --> input;
-#         input --> process;
-#         process --> output;
-#         output --> __end__;
-#         classDef default fill:#f2f0ff,line-height:1.2
-#         classDef first fill-opacity:0
-#         classDef last fill:#bfb6fc
+"""
+【输出实例】
+input_node 节点执行 state.get('process_data'): {'name': '测试数据', 'value': 123456}
+process_node 节点执行 state.get('process_data'): {'input': 'input_value'}
+output_node 节点执行 state.get('process_data'): {'process': 'process_value9527'}
+最后的结果是:{'process_data': {'process': 'process_value9527'}}
++-----------+
+| __start__ |
++-----------+
+      *
+      *
+      *
+  +-------+
+  | input |
+  +-------+
+      *
+      *
+      *
+ +---------+
+ | process |
+ +---------+
+      *
+      *
+      *
+  +--------+
+  | output |
+  +--------+
+      *
+      *
+      *
+ +---------+
+ | __end__ |
+ +---------+
+None
+=================================
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+        __start__([<p>__start__</p>]):::first
+        input(input)
+        process(process)
+        output(output)
+        __end__([<p>__end__</p>]):::last
+        __start__ --> input;
+        input --> process;
+        process --> output;
+        output --> __end__;
+        classDef default fill:#f2f0ff,line-height:1.2
+        classDef first fill-opacity:0
+        classDef last fill:#bfb6fc
+"""
+

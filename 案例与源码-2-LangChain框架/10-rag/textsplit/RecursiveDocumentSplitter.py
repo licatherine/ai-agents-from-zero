@@ -33,10 +33,13 @@ for splitter_document in splitter_documents:
         f"文档片段大小：{len(splitter_document.page_content)}, 文档元数据：{splitter_document.metadata}"
     )
 
-# 【输出示例】
-# 分割文档数量：14
-# 文档片段：《倚天屠龙记》是金庸“射雕三部曲”的终章，以元末乱世为背景，谱写了一曲江湖侠义与家国情怀交织的传奇。
-# 文档片段大小：50, 文档元数据：{'source': 'rag.txt', 'last_modified': '2026-03-10T10:36:41', 'languages': ['zho'], 'filename': 'rag.txt', 'filetype': 'text/plain', 'category': 'Title', 'element_id': '2089ea66f6635c149a4ea8fda049b579'}
-# 文档片段：小说核心围绕张无忌的成长轨迹展开，他本是武当弟子张翠山与天鹰教殷素素之子，自幼身中玄冥神掌，历经磨难却得奇遇，
-# 文档片段大小：55, 文档元数据：{'source': 'rag.txt', 'last_modified': '2026-03-10T10:36:41', 'languages': ['zho'], 'filename': 'rag.txt', 'filetype': 'text/plain', 'category': 'Title', 'element_id': '391f965ee98ac9ace2fac0a7c04ce062'}
-# ……
+"""
+【输出示例】
+分割文档数量：14
+文档片段：《倚天屠龙记》是金庸“射雕三部曲”的终章，以元末乱世为背景，谱写了一曲江湖侠义与家国情怀交织的传奇。
+文档片段大小：50, 文档元数据：{'source': 'rag.txt', 'last_modified': '2026-03-10T10:36:41', 'languages': ['zho'], 'filename': 'rag.txt', 'filetype': 'text/plain', 'category': 'Title', 'element_id': '2089ea66f6635c149a4ea8fda049b579'}
+文档片段：小说核心围绕张无忌的成长轨迹展开，他本是武当弟子张翠山与天鹰教殷素素之子，自幼身中玄冥神掌，历经磨难却得奇遇，
+文档片段大小：55, 文档元数据：{'source': 'rag.txt', 'last_modified': '2026-03-10T10:36:41', 'languages': ['zho'], 'filename': 'rag.txt', 'filetype': 'text/plain', 'category': 'Title', 'element_id': '391f965ee98ac9ace2fac0a7c04ce062'}
+……
+"""
+

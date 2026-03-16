@@ -21,6 +21,9 @@ print(prompt)
 # 类型是 str，可直接传给 model.invoke(prompt)（若模型支持）
 print(type(prompt))
 
-# 【输出示例】
-# 你是一个专业的python开发工程师，请回答我的问题给出回答，我的问题是：二分查找算法怎么写？
-# <class 'str'>
+"""
+【输出示例】
+你是一个专业的python开发工程师，请回答我的问题给出回答，我的问题是：二分查找算法怎么写？
+<class 'str'>
+"""
+

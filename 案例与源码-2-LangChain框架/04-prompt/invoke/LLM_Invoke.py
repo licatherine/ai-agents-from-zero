@@ -54,7 +54,10 @@ print(f"响应类型：{type(response)}")
 print(response.content)
 print(response.content_blocks)
 
-# 【输出示例】
-# 响应类型：<class 'langchain_core.messages.ai.AIMessage'>
-# 《广告法》是规范广告活动、保护消费者权益、维护市场秩序的法律，禁止虚假宣传、误导欺诈等行为。
-# [{'type': 'text', 'text': '《广告法》是规范广告活动、保护消费者权益、维护市场秩序的法律，禁止虚假宣传、误导欺诈等行为。'}]
+"""
+【输出示例】
+响应类型：<class 'langchain_core.messages.ai.AIMessage'>
+《广告法》是规范广告活动、保护消费者权益、维护市场秩序的法律，禁止虚假宣传、误导欺诈等行为。
+[{'type': 'text', 'text': '《广告法》是规范广告活动、保护消费者权益、维护市场秩序的法律，禁止虚假宣传、误导欺诈等行为。'}]
+"""
+

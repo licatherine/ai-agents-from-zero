@@ -38,5 +38,8 @@ chat_prompt2 = ChatPromptTemplate(
 message2 = chat_prompt2.format_messages(name="小问", question="什么是LangChain")
 print("构造函数:", message2)
 
-# 【输出示例】
-# [SystemMessage(content='你是AI助手，你的名字叫小问。', additional_kwargs={}, response_metadata={}), HumanMessage(content='请问：什么是LangChain', additional_kwargs={}, response_metadata={})]
+"""
+【输出示例】
+[SystemMessage(content='你是AI助手，你的名字叫小问。', additional_kwargs={}, response_metadata={}), HumanMessage(content='请问：什么是LangChain', additional_kwargs={}, response_metadata={})]
+"""
+

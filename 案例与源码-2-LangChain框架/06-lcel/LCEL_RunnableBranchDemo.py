@@ -91,12 +91,14 @@ for query_input in test_queries:
     result = chain.invoke(query_input)
     logger.info(f"输出结果: {result}\n")
 
-# 【输出示例】
-# 2026-03-06 10:15:54.493 | INFO     | __main__:<module>:77 - 检测到语言类型: korean
-# 2026-03-06 10:15:54.493 | INFO     | __main__:<module>:88 - 格式化后的提示词:
-# 2026-03-06 10:15:54.493 | INFO     | __main__:<module>:90 - [system]: 你是一个韩语翻译专家，你叫小韩
-# 2026-03-06 10:15:54.493 | INFO     | __main__:<module>:90 - [human]: 请你用韩语翻译这句话:"见到你很高兴"
-# 2026-03-06 10:15:55.733 | INFO     | __main__:<module>:94 - 输出结果: 만나서 반갑습니다.
+"""
+【输出示例】
+2026-03-06 10:15:54.493 | INFO     | __main__:<module>:77 - 检测到语言类型: korean
+2026-03-06 10:15:54.493 | INFO     | __main__:<module>:88 - 格式化后的提示词:
+2026-03-06 10:15:54.493 | INFO     | __main__:<module>:90 - [system]: 你是一个韩语翻译专家，你叫小韩
+2026-03-06 10:15:54.493 | INFO     | __main__:<module>:90 - [human]: 请你用韩语翻译这句话:"见到你很高兴"
+2026-03-06 10:15:55.733 | INFO     | __main__:<module>:94 - 输出结果: 만나서 반갑습니다.
+"""
 
 # 2026-03-06 10:15:55.733 | INFO     | __main__:<module>:77 - 检测到语言类型: japanese
 # 2026-03-06 10:15:55.733 | INFO     | __main__:<module>:88 - 格式化后的提示词:
@@ -109,3 +111,4 @@ for query_input in test_queries:
 # 2026-03-06 10:15:56.552 | INFO     | __main__:<module>:90 - [system]: 你是一个英语翻译专家，你叫小英
 # 2026-03-06 10:15:56.552 | INFO     | __main__:<module>:90 - [human]: 请你用英语翻译这句话:"见到你很高兴"
 # 2026-03-06 10:15:57.031 | INFO     | __main__:<module>:94 - 输出结果: Nice to meet you.
+

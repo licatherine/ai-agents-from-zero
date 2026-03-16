@@ -26,5 +26,8 @@ model = ChatOllama(
 response = model.invoke("什么是LangChain，100字以内回答")
 print(response)
 
-# 【可选】如果你只想看到模型回复的纯文字，可以这样取：
-# print(response.content)
+"""
+【可选】如果你只想看到模型回复的纯文字，可以这样取：
+print(response.content)
+"""
+

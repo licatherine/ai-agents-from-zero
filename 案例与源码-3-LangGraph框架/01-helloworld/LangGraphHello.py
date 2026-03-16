@@ -64,49 +64,52 @@ with open(output_path, "wb") as f:
     f.write(png_bytes)
 print(f"图片已生成：{output_path}")
 
-# 【输出示例】
-# {'name': 'z3', 'greeting': '你好,z3  。。。😄'}
-# 你好,z3  。。。😄
-# （图中 __start__ / __end__ 及 Python 属性命名约定见文件头「知识点速览」。）
-#
-# +-----------+
-# | __start__ |
-# +-----------+
-#       *
-#       *
-#       *
-# +----------+
-# | greeting |
-# +----------+
-#       *
-#       *
-#       *
-# +-----------+
-# | add_emoji |
-# +-----------+
-#       *
-#       *
-#       *
-#  +---------+
-#  | __end__ |
-#  +---------+
-# None
-# ==================================================
-# ---
-# config:
-#   flowchart:
-#     curve: linear
-# ---
-# graph TD;
-#         __start__([<p>__start__</p>]):::first
-#         greeting(greeting)
-#         add_emoji(add_emoji)
-#         __end__([<p>__end__</p>]):::last
-#         __start__ --> greeting;
-#         greeting --> add_emoji;
-#         add_emoji --> __end__;
-#         classDef default fill:#f2f0ff,line-height:1.2
-#         classDef first fill-opacity:0
-#         classDef last fill:#bfb6fc
+"""
+【输出示例】
+{'name': 'z3', 'greeting': '你好,z3  。。。😄'}
+你好,z3  。。。😄
+（图中 __start__ / __end__ 及 Python 属性命名约定见文件头「知识点速览」。）
+
++-----------+
+| __start__ |
++-----------+
+      *
+      *
+      *
++----------+
+| greeting |
++----------+
+      *
+      *
+      *
++-----------+
+| add_emoji |
++-----------+
+      *
+      *
+      *
+ +---------+
+ | __end__ |
+ +---------+
+None
+==================================================
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+        __start__([<p>__start__</p>]):::first
+        greeting(greeting)
+        add_emoji(add_emoji)
+        __end__([<p>__end__</p>]):::last
+        __start__ --> greeting;
+        greeting --> add_emoji;
+        add_emoji --> __end__;
+        classDef default fill:#f2f0ff,line-height:1.2
+        classDef first fill-opacity:0
+        classDef last fill:#bfb6fc
+"""
 
 # ==================================================
+

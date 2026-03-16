@@ -39,7 +39,9 @@ for splitter_document in splitter_documents:
         f"文档片段大小：{len(splitter_document.page_content)},文档内容：{splitter_document.page_content}"
     )
 
-# 【输出示例】
+"""
+【输出示例】
+"""
 """
 原始文本大小：225
 
@@ -63,3 +65,4 @@ for splitter_document in splitter_documents:
 这正是分割器设计chunk_overlap的目的：
 以 “重复计算重叠部分” 为代价，保证每个文本块的语义完整性，避免分割切断上下文。
 """
+

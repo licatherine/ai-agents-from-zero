@@ -71,13 +71,15 @@ logger.info(f"Chain执行结果类型: {type(result_chain)}")
 print()
 print(type(chain))
 
-# 【输出示例】
-# 2026-03-06 10:09:39.882 | INFO     | __main__:<module>:30 - messages=[SystemMessage(content='你是一个AI助手，请简短回答我提出的问题', additional_kwargs={}, response_metadata={}), HumanMessage(content='请回答:什么是LangChain，简洁回答100字以内', additional_kwargs={}, response_metadata={})]
-# 2026-03-06 10:09:42.059 | INFO     | __main__:<module>:42 - ********>模型原始输出:
-# content='LangChain 是一个开源框架，用于构建基于大语言模型（LLM）的应用程序。它提供模块化组件（如链、代理、记忆、工具等），支持提示工程、外部数据接入、多步推理与状态管理，简化 LLM 应用的开发与集成。' additional_kwargs={'refusal': None} response_metadata={'token_usage': {'completion_tokens': 62, 'prompt_tokens': 38, 'total_tokens': 100, 'completion_tokens_details': None, 'prompt_tokens_details': {'audio_tokens': None, 'cached_tokens': 0}}, 'model_provider': 'openai', 'model_name': 'qwen-plus', 'system_fingerprint': None, 'id': 'chatcmpl-45f313fd-c388-9498-baa4-c9036e7644a1', 'finish_reason': 'stop', 'logprobs': None} id='lc_run--019cc0e8-5f78-7ef3-a751-d1a4bcfba176-0' tool_calls=[] invalid_tool_calls=[] usage_metadata={'input_tokens': 38, 'output_tokens': 62, 'total_tokens': 100, 'input_token_details': {'cache_read': 0}, 'output_token_details': {}}
-# 2026-03-06 10:09:42.059 | INFO     | __main__:<module>:49 - 解析后的结构化结果:
-# LangChain 是一个开源框架，用于构建基于大语言模型（LLM）的应用程序。它提供模块化组件（如链、代理、记忆、工具等），支持提示工程、外部数据接入、多步推理与状态管理，简化 LLM 应用的开发与集成。
-# 2026-03-06 10:09:42.059 | INFO     | __main__:<module>:50 - 结果类型: <class 'langchain_core.messages.base.TextAccessor'>
+"""
+【输出示例】
+2026-03-06 10:09:39.882 | INFO     | __main__:<module>:30 - messages=[SystemMessage(content='你是一个AI助手，请简短回答我提出的问题', additional_kwargs={}, response_metadata={}), HumanMessage(content='请回答:什么是LangChain，简洁回答100字以内', additional_kwargs={}, response_metadata={})]
+2026-03-06 10:09:42.059 | INFO     | __main__:<module>:42 - ********>模型原始输出:
+content='LangChain 是一个开源框架，用于构建基于大语言模型（LLM）的应用程序。它提供模块化组件（如链、代理、记忆、工具等），支持提示工程、外部数据接入、多步推理与状态管理，简化 LLM 应用的开发与集成。' additional_kwargs={'refusal': None} response_metadata={'token_usage': {'completion_tokens': 62, 'prompt_tokens': 38, 'total_tokens': 100, 'completion_tokens_details': None, 'prompt_tokens_details': {'audio_tokens': None, 'cached_tokens': 0}}, 'model_provider': 'openai', 'model_name': 'qwen-plus', 'system_fingerprint': None, 'id': 'chatcmpl-45f313fd-c388-9498-baa4-c9036e7644a1', 'finish_reason': 'stop', 'logprobs': None} id='lc_run--019cc0e8-5f78-7ef3-a751-d1a4bcfba176-0' tool_calls=[] invalid_tool_calls=[] usage_metadata={'input_tokens': 38, 'output_tokens': 62, 'total_tokens': 100, 'input_token_details': {'cache_read': 0}, 'output_token_details': {}}
+2026-03-06 10:09:42.059 | INFO     | __main__:<module>:49 - 解析后的结构化结果:
+LangChain 是一个开源框架，用于构建基于大语言模型（LLM）的应用程序。它提供模块化组件（如链、代理、记忆、工具等），支持提示工程、外部数据接入、多步推理与状态管理，简化 LLM 应用的开发与集成。
+2026-03-06 10:09:42.059 | INFO     | __main__:<module>:50 - 结果类型: <class 'langchain_core.messages.base.TextAccessor'>
+"""
 
 # ************************************************************
 
@@ -86,3 +88,4 @@ print(type(chain))
 # 2026-03-06 10:09:44.073 | INFO     | __main__:<module>:62 - Chain执行结果类型: <class 'langchain_core.messages.base.TextAccessor'>
 
 # <class 'langchain_core.runnables.base.RunnableSequence'>
+

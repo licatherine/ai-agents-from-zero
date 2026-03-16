@@ -52,8 +52,11 @@ prompt_value = prompt.invoke(
 # 把整段 prompt 转成字符串查看（系统设定 + 历史 + 当前问题）
 print(prompt_value.to_string())
 
-# 【输出示例】
-# System: 你是一个资深的Python应用开发工程师，请认真回答我提出的Python相关的问题
-# Human: 我的名字叫亮仔，是一名程序员111
-# AI: 好的，亮仔你好222
-# Human: 请问我的名字叫什么？
+"""
+【输出示例】
+System: 你是一个资深的Python应用开发工程师，请认真回答我提出的Python相关的问题
+Human: 我的名字叫亮仔，是一名程序员111
+AI: 好的，亮仔你好222
+Human: 请问我的名字叫什么？
+"""
+

@@ -52,17 +52,20 @@ print(prompt_1)
 print(prompt_2)
 
 
-# 【输出示例】
-# 你是一个专业的python开发工程师，请回答我的问题给出回答，我的问题是：冒泡排序怎么写,只要代码其它不要，简洁
-# ```python
-# def bubble_sort(arr):
-#     n = len(arr)
-#     for i in range(n):
-#         for j in range(0, n - i - 1):
-#             if arr[j] > arr[j + 1]:
-#                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
-#     return arr
-# ```
+"""
+【输出示例】
+你是一个专业的python开发工程师，请回答我的问题给出回答，我的问题是：冒泡排序怎么写,只要代码其它不要，简洁
+```python
+def bubble_sort(arr):
+    n = len(arr)
+    for i in range(n):
+        for j in range(0, n - i - 1):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+    return arr
+```
+"""
 
 # 请评价智能手机的优缺点，包括电池续航和拍照质量。
 # 请评价笔记本电脑的优缺点，包括处理速度和便携性。
+

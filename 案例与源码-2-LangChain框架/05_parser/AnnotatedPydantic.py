@@ -31,9 +31,12 @@ except ValidationError as e:
     print("数据校验失败：")
     print(e)
 
-# 【输出示例】
-# 数据校验失败：
-# 1 validation error for Person
-# age2
-#   Input should be less than or equal to 150 [type=less_than_equal, input_value=188, input_type=int]
-#     For further information visit https://errors.pydantic.dev/2.12/v/less_than_equal
+"""
+【输出示例】
+数据校验失败：
+1 validation error for Person
+age2
+  Input should be less than or equal to 150 [type=less_than_equal, input_value=188, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/less_than_equal
+"""
+

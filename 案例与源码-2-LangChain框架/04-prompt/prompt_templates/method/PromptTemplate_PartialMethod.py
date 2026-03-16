@@ -27,9 +27,12 @@ prompt = partial.format(question="冒泡排序怎么写？")
 print(prompt)
 print(type(prompt))
 
-# 【输出示例】
-# input_variables=['question'] input_types={} partial_variables={'role': 'python开发'} template='你是一个专业的{role}工程师，请回答我的问题给出回答，我的问题是：{question}'
-# <class 'langchain_core.prompts.prompt.PromptTemplate'>
+"""
+【输出示例】
+input_variables=['question'] input_types={} partial_variables={'role': 'python开发'} template='你是一个专业的{role}工程师，请回答我的问题给出回答，我的问题是：{question}'
+<class 'langchain_core.prompts.prompt.PromptTemplate'>
+"""
 
 # 你是一个专业的python开发工程师，请回答我的问题给出回答，我的问题是：冒泡排序怎么写？
 # <class 'str'>
+

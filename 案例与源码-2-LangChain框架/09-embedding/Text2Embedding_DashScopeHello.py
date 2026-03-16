@@ -31,5 +31,8 @@ resp = dashscope.TextEmbedding.call(
 if resp.status_code == HTTPStatus.OK:
     print(resp)
 
-# 【输出示例】
-# {"status_code": 200, "request_id": "0a76a5db-f4af-4e5a-b0c4-1689d81ba154", "code": "", "message": "", "output": {"embeddings": [{"embedding": [0.02258586511015892, -0.08700370043516159, -0.013521800749003887, -0.05904024466872215, 0.027100207284092903, -0.03104848973453045, 0.01432843878865242, -0.0008265386568382382,……], "text_index": 0}]}, "usage": {"total_tokens": 6}}
+"""
+【输出示例】
+{"status_code": 200, "request_id": "0a76a5db-f4af-4e5a-b0c4-1689d81ba154", "code": "", "message": "", "output": {"embeddings": [{"embedding": [0.02258586511015892, -0.08700370043516159, -0.013521800749003887, -0.05904024466872215, 0.027100207284092903, -0.03104848973453045, 0.01432843878865242, -0.0008265386568382382,……], "text_index": 0}]}, "usage": {"total_tokens": 6}}
+"""
+

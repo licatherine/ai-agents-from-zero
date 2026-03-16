@@ -91,6 +91,9 @@ if __name__ == "__main__":
     logger.info("启动 MCP SSE 天气服务器，监听 http://127.0.0.1:8000/sse")
     mcp.run(transport="sse")
 
-# 【输出示例】
-# 2026-03-13 10:53:49.293 | INFO     | __main__:<module>:86 - 启动 MCP SSE 天气服务器，监听 http://127.0.0.1:8000/sse
-# 2026-03-13 10:53:49.293 | INFO     | __main__:run:46 - 启动 MCP SSE 天气服务器，监听 http://127.0.0.1:8000/sse
+"""
+【输出示例】
+2026-03-13 10:53:49.293 | INFO     | __main__:<module>:86 - 启动 MCP SSE 天气服务器，监听 http://127.0.0.1:8000/sse
+2026-03-13 10:53:49.293 | INFO     | __main__:run:46 - 启动 MCP SSE 天气服务器，监听 http://127.0.0.1:8000/sse
+"""
+
