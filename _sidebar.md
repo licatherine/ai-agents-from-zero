@@ -50,5 +50,7 @@
   - [第 22 章 LangGraph 概述与快速入门](22-LangGraph概述与快速入门.md)
   - [第 23 章 LangGraph API：图与状态](23-LangGraphAPI：图与状态.md)
   - [第 24 章 LangGraph API：节点、边与进阶](24-LangGraphAPI：节点、边与进阶.md)
+  - [第 25 章 LangGraph 高级特性](25-LangGraph高级特性.md)
+  - [第 26 章 LangGraph 多智能体与 A2A](26-LangGraph多智能体与A2A.md)
 
 - [更新日志](教程更新日志.md)
