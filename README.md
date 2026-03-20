@@ -17,7 +17,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-Project-181717?logo=github&logoColor=white)](https://github.com/didilili/ai-agents-from-zero/)
 [![Read Online](https://img.shields.io/badge/在线阅读-点击访问-blue?logo=bookstack)](https://didilili.github.io/ai-agents-from-zero/#/)
 
-[快速开始](README.md#-快速开始) • [仓库说明](README.md#📖-关于本仓库) • [教程大纲](教程目录大纲.md) • [案例汇总](教程案例链接汇总.md#教程案例链接汇总源码与在线演示) • [更新日志](教程更新日志.md) • [新手入门与常见问题](新手入门与常见问题.md)
+[快速开始](README.md#-快速开始) • [面试题汇编](面试题汇编.md) • [教程大纲](教程目录大纲.md) • [案例汇总](教程案例链接汇总.md#教程案例链接汇总源码与在线演示) • [更新日志](教程更新日志.md) • [新手入门与常见问题](新手入门与常见问题.md)
 
   <p>
     <a href="https://didilili.github.io/ai-agents-from-zero/#/">📚 在线阅读</a>
