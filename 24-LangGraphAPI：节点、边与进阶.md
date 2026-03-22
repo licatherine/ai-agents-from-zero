@@ -22,7 +22,7 @@
 
 在 LangGraph 中，节点（Node）即 Python 函数（同步或异步），可接收 `state`、`config`（RunnableConfig）、`runtime`（Runtime 对象）等参数；通过 `add_node` 将节点加入图，未指定名称时默认使用函数名。
 
-![节点可接收 state、config、runtime 等参数 (images/23/image31.jpeg)](images/23/image31.jpeg)
+![节点可接收 state、config、runtime 等参数](images/24/24-1-1-1.jpeg)
 
 
 **节点可接收的三种参数（通俗理解）：**
@@ -69,7 +69,7 @@ graph.add_edge("node_a", END)
 
 LangGraph 支持基于节点输入的缓存，通过 `CachePolicy(key_func, ttl)` 配置；编译时指定缓存实现（如 `InMemoryCache()`）。缓存命中时直接返回结果，未命中时执行节点并写入缓存。
 
-![节点缓存：key_func 与 ttl 配置示意 (images/23/image35.jpeg)](images/23/image35.jpeg)
+![节点缓存：key_func 与 ttl 配置示意](images/24/24-1-3-1.jpeg)
 
 **图中要点说明：**
 
@@ -124,7 +124,7 @@ Edge 定义节点之间的连接与执行顺序；一个节点可有多个出边
 
 类型包括：普通边、条件边、入口点、条件入口点（后两种见下文）。
 
-![添加边的代码示意 (images/23/image39.jpeg)](images/23/image39.jpeg)
+![添加边的代码示意](images/24/24-2-1-1.jpeg)
 
 **图中要点说明：**
 
@@ -132,7 +132,7 @@ Edge 定义节点之间的连接与执行顺序；一个节点可有多个出边
 - 写完后需调用 `graph.compile()` 编译图，框架会校验结构是否正确（若某条边指向的节点尚未用 `add_node` 添加，会报错）。
 - 右侧流程图即该图编译后的直观表示：`__start__`、`input`、`process`、`output`、`__end__` 按箭头顺序执行；最后通过 `app.invoke(初始状态)` 运行图。
 
-![Edge 关键类型示意 (images/23/image40.jpeg)](images/23/image40.jpeg)
+![Edge 关键类型示意](images/24/24-2-1-2.jpeg)
 
 **四种边/入口的用法小结（对应上图）：**
 
@@ -166,7 +166,7 @@ graph.add_conditional_edges("node_a", routing_function)
 graph.add_conditional_edges("node_a", routing_function, {True: "node_b", False: "node_c"})
 ```
 
-![条件边根据状态动态路由 (images/23/image44.jpeg)](images/23/image44.jpeg)
+![条件边根据状态动态路由](images/24/24-2-3-1.jpeg)
 
 **图中要点说明：**
 
@@ -233,7 +233,7 @@ graph.add_conditional_edges("node_a", continue_to_jokes)
 
 `node_a` 执行完后会调用 `continue_to_jokes`；返回的多个 `Send` 会形成多路并行，每路都进入 `generate_joke` 并带上各自的 `subject`。
 
-![Map-Reduce：拆分 → 并行 → 汇总 (images/23/image49.jpeg)](images/23/image49.jpeg)
+![Map-Reduce：拆分 → 并行 → 汇总](images/24/24-3-2-1.jpeg)
 
 **Send 的参数**：`Send(node, arg)` —— `node` 为目标节点名称（字符串），`arg` 为传给该节点的状态或消息（任意类型，通常为 dict）。每个 `Send` 会触发一次该节点的执行，且**只**收到这份 `arg`，即「每路自带私有状态」。
 

@@ -47,7 +47,7 @@
 
 [LangGraphAgent.py](案例与源码-3-LangGraph框架/08-multi_agent/LangGraphAgent.py ":include :type=code")
 
-![多智能体架构示意：多个 Agent 组成图并协作](images/25/image77.gif)
+![多智能体架构示意：多个 Agent 组成图并协作](images/26/26-1-3-1.gif)
 
 ### 1.4 多智能体的常见连接方式
 
@@ -57,9 +57,9 @@
 - **Hierarchical（层级型）**：多层监督者，顶层分配任务给子 Supervisor，再下放到具体 Agent；适合大型任务拆解、复杂管道。
 - **Custom（自定义）**：按业务自由组合路由、协作、监督与 HITL。
 
-![多智能体连接方式：Network、Supervisor、层级等](images/25/image78.gif)
+![多智能体连接方式：Network、Supervisor、层级等](images/26/26-1-4-1.gif)
 
-![多智能体形态对比总结](images/25/image79.gif)
+![多智能体形态对比总结](images/26/26-1-4-2.gif)
 
 ---
 
@@ -71,11 +71,11 @@
 
 LangGraph 提供 **langgraph-supervisor** 库（`pip install langgraph-supervisor`），可快速搭建 Supervisor 图。
 
-![Supervisor 架构：主管协调多个子 Agent](images/25/image80.jpeg)
+![Supervisor 架构：主管协调多个子 Agent](images/26/26-2-1-1.gif)
 
 **流程说明（概念）：** 用户输入 → Supervisor 解析需求 → 按需调用 flight_assistant / hotel_assistant → 子 Agent 调用工具并回报 → Supervisor 汇总并回复用户。
 
-![Supervisor 执行流程示意](images/25/image81.gif)
+![Supervisor 执行流程示意](images/26/26-2-1-2.gif)
 
 **老版本示例（V0.3，基于 create_react_agent）**  
 【案例源码】`案例与源码-3-LangGraph框架/08-multi_agent/SupervisorV0.3.py`
@@ -107,29 +107,29 @@ LangGraph 提供 **langgraph-supervisor** 库（`pip install langgraph-superviso
 **是什么：**  
 可以把 **Agent** 想象成厨师，**Agent Skills** 则是厨师掌握的烹饪技法（刀工、炒、蒸、烤）与厨房工具（锅、铲、烤箱）。Agent 决定「做什么、用什么、按什么顺序」；Skills 是完成具体工序的**能力单元与流程**。二者结合才能完成复杂任务。
 
-![Agent 与 Skills 的关系：Agent 决策，Skills 提供可复用能力](images/25/image82.jpeg)
+![Agent 与 Skills 的关系：Agent 决策，Skills 提供可复用能力](images/26/26-3-1-1.jpeg)
 
 **类比示例（技能步骤）：** 如炒菜可拆成备料、热锅、下料、调味、装盘等步骤，每个步骤可对应一组规范化操作（类似「技能」）。下图为人做豆浆/炸油条等技能流程示例。
 
-![技能示例：人做豆浆或炸油条等流程](images/25/image83.jpeg)
+![技能示例：人做豆浆或炸油条等流程](images/26/26-3-1-2.jpeg)
 
-![技能示例：炒菜步骤 2](images/25/image84.jpeg)
+![技能示例：炒菜步骤 2](images/26/26-3-1-3.jpeg)
 
-![技能示例：炒菜步骤 3](images/25/image85.jpeg)
+![技能示例：炒菜步骤 3](images/26/26-3-1-4.jpeg)
 
-![技能示例：炒菜步骤 4](images/25/image86.jpeg)
+![技能示例：炒菜步骤 4](images/26/26-3-1-5.jpeg)
 
-![技能示例：炒菜步骤 5](images/25/image87.jpeg)
+![技能示例：炒菜步骤 5](images/26/26-3-1-6.jpeg)
 
-![技能示例：炒菜步骤 6](images/25/image88.jpeg)
+![技能示例：炒菜步骤 6](images/26/26-3-1-7.jpeg)
 
-![技能示例：炒菜步骤 7](images/25/image89.jpeg)
+![技能示例：炒菜步骤 7](images/26/26-3-1-8.jpeg)
 
 **官方说法：** 常提到「渐进式披露」与分层架构——从简单到复杂，按需暴露能力。
 
-![Skill 架构：简单形态](images/25/image89.jpeg)
+![Skill 架构：简单形态](images/26/26-3-1-8.jpeg)
 
-![Skill 架构：复杂形态](images/25/image90.jpeg)
+![Skill 架构：复杂形态](images/26/26-3-1-9.jpeg)
 
 **一句话总结：** Agent Skills 可理解为**提示词的规范化与工程化落地**，类似提示词版本的「Maven 结构」——可复用、可组合、可管理的技能单元与依赖关系。
 
