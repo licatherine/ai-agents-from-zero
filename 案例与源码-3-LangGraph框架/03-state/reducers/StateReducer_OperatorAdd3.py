@@ -42,3 +42,10 @@ def run_demo():
 
 if __name__ == "__main__":
     run_demo()
+
+"""
+【输出实例】
+3.3 数值累加 Reducer 演示:
+初始状态: {'count': 10}
+执行结果: {'count': 18}
+"""

@@ -27,6 +27,7 @@ def producer_2(state: ListAddState) -> dict:
 
 
 def run_demo():
+    print("3.1 列表追加 Reducer 演示:")
     builder = StateGraph(ListAddState)
     builder.add_node("producer1", producer_1)
     builder.add_node("producer2", producer_2)
@@ -41,3 +42,10 @@ def run_demo():
 
 if __name__ == "__main__":
     run_demo()
+
+"""
+【输出实例】
+3.1 列表追加 Reducer 演示:
+初始状态: {'data': [0]}
+执行结果: {'data': [0, 1, 2, 3, 4]}
+"""

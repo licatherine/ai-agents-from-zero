@@ -10,7 +10,7 @@
 
 **前置知识建议：** 已学习 [第 22 章 LangGraph 概述与快速入门](22-LangGraph概述与快速入门.md)，掌握 LangGraph 四要素（State、Nodes、Edges、Graph）、图的六步构建流程，并至少跑通 HelloWorld 或 LangGraphBiz 案例。
 
-**学习建议：** 先通读「什么是图」「什么是 State」建立概念，再按顺序跑通 BuildWholeGraphSummary、DefState、Reducer 案例与 StateSchema。**Node（节点）、Edge（边）与 Send/Command/Runtime 等高级控制**见 [第 24 章 LangGraph Graph API 之 Node、Edge 与高级控制](24-LangGraphGraphAPI-Node与Edge与高级控制.md)。
+**学习建议：** 先通读「什么是图」「什么是状态」建立概念，再按顺序跑通 BuildWholeGraphSummary、DefState、Reducer 案例与 StateSchema。**Node（节点）、Edge（边）与 Send/Command/Runtime 等高级控制**见 [第 24 章 LangGraph Graph API 之 Node、Edge 与高级控制](24-LangGraphGraphAPI-Node与Edge与高级控制.md)。
 
 ---
 
@@ -48,7 +48,11 @@
 
 它存储从工作流开始到结束所需的信息（如历史对话、检索到的文档、工具执行结果等），在**各节点间共享**，且每个节点都可以按规则对其更新。
 
-State 由两部分组成：**图的 Schema（模式）** 和 **规约函数（Reducer）**。Schema 描述状态有哪些字段、什么类型；Reducer 规定节点产生的**更新**如何合并到当前状态（例如追加列表、替换字段等）。**定义图时，首先要做的就是定义图的 State**，即把这两部分设计好。
+State 由两部分组成：**图的 Schema（模式）** 和 **规约函数（Reducer）**。
+
+为免与「示意图」混淆：**这里的「图」**就是第 1 节所讲的那张**工作流有向图**（节点、边、`START`/`END`，代码里常见为 `StateGraph(...)`）。**「图的 Schema」**指与这张图**绑在一起**的状态类型——也就是你传给 `StateGraph` 的那个类型（如 `StateGraph(MyState)` 里的 `MyState`），它规定运行时**共享状态**有哪些字段、各是什么类型。
+
+Schema 描述状态有哪些字段、什么类型；Reducer 规定节点产生的**更新**如何合并到当前状态（例如追加列表、替换字段等）。**定义图时，首先要做的就是定义图的 State**，即把这两部分设计好。
 
 可以这样理解 State 的角色：
 
@@ -88,7 +92,7 @@ State 可以是 **TypedDict**，也可以是 **Pydantic 的 BaseModel**。下表
 
 两种写法在 LangGraph 里都能参与图的编译，只需按规则声明字段即可。
 
-### 2.4 State 的组成：Schema 与三要素
+### 2.4 State 的组成：Schema（模式）
 
 **官方介绍：** https://docs.langchain.com/oss/javascript/langgraph/graph-api#schema
 
@@ -188,13 +192,13 @@ State 可以是 **TypedDict**，也可以是 **Pydantic 的 BaseModel**。下表
 
 [StateReducer_Custom.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducer_Custom.py ":include :type=code")
 
-#### 2.5.7 多种策略并存（家庭作业）
+#### 2.5.7 多种策略并存
 
 同一 State 中可对不同字段使用不同 Reducer（如 messages 用 add_messages，tags 用 operator.add，score 用 operator.add）。下面案例供自行阅读与运行。
 
-【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducersMyChatBot家庭作业.py`
+【案例源码】`案例与源码-3-LangGraph框架/03-state/reducers/StateReducersMyChatBot.py`
 
-[StateReducersMyChatBot 家庭作业.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducersMyChatBot家庭作业.py ":include :type=code")
+[StateReducersMyChatBot.py](案例与源码-3-LangGraph框架/03-state/reducers/StateReducersMyChatBot.py ":include :type=code")
 
 ### 2.6 输入输出 Schema 示例
 

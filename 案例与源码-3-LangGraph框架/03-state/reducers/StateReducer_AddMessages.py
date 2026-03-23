@@ -49,3 +49,28 @@ def run_demo():
 
 if __name__ == "__main__":
     run_demo()
+
+"""
+【输出实例】
+2. add_messages Reducer（消息列表专用）演示:
+初始状态: {'messages': [('user', 'Hi there!')]}
+执行结果: {'messages': [HumanMessage(content='Hi there!', additional_kwargs={}, response_metadata={}, id='1ef23c0c-ec9a-4e41-a3fb-2a80e5f84666'), AIMessage(content='Hello from node 1', additional_kwargs={}, response_metadata={}, id='09bed348-3770-400b-93fd-f550a647445f', tool_calls=[], invalid_tool_calls=[]), AIMessage(content='Hello from node 2', additional_kwargs={}, response_metadata={}, id='06bbf85f-9661-450d-a54e-5025abe7a34b', tool_calls=[], invalid_tool_calls=[])]}
+
+************************************************************
+       +-----------+         
+       | __start__ |         
+       +-----------+         
+         *        *          
+       **          **        
+      *              *       
++-------+         +-------+  
+| chat1 |         | chat2 |  
++-------+         +-------+  
+         *        *          
+          **    **           
+            *  *             
+        +---------+          
+        | __end__ |          
+        +---------+          
+None
+"""

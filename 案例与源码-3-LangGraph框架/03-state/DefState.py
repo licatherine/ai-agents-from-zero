@@ -4,7 +4,9 @@
 对应教程章节：第 23 章 - LangGraph API：图与状态 → 2、Graph API 之 State（状态）
 
 知识点速览：
-- State 用 TypedDict 声明字段及类型，图中所有节点读写同一份状态结构。
+- State 由 Schema（模式） 与 Reducer（规约函数） 两部分组成。
+- 本例用 TypedDict（下方 `BasicState`）定义 Schema（字段名与类型）；图中所有节点读写同一份状态结构。
+- 字段未用 `Annotated[..., reducer]` 指定 Reducer 时，使用 LangGraph 默认 Reducer（常见为节点返回的新值覆盖该字段旧值）。
 - add_edge(START, END) 表示没有业务节点，图从入口直接到出口，常用于验证「状态原样透传」。
 - invoke() 只接收一个核心位置参数：状态字典；不要传入多个独立参数。可选第二参数为 config。
 - 嵌套类型（如 process_data: dict）在 initial_state 中需传入合法字典。
@@ -15,7 +17,7 @@ from langgraph.graph import StateGraph, START, END
 
 
 class BasicState(TypedDict):
-    """基本 State 定义：包含常用字段示例。"""
+    """本图的状态 Schema：字段名 + 类型即「形状」；传给 StateGraph(BasicState) 后，运行时共享状态须符合此结构。"""
 
     user_input: str
     response: str
@@ -23,7 +25,7 @@ class BasicState(TypedDict):
     process_data: dict
 
 
-# 创建状态图并指定状态结构
+# 创建状态图：泛型参数 BasicState 即该图的 State Schema（Reducer 为各字段默认规则）
 basicState = StateGraph(BasicState)
 # 无中间节点：直接从 START 到 END，状态会原样透传
 basicState.add_edge(START, END)
@@ -44,4 +46,3 @@ print("执行结果：", result)
 【输出实例】
 执行结果： {'user_input': 'a', 'response': 'resp', 'count': 25, 'process_data': {'k1': 'v1'}}
 """
-
