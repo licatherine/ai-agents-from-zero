@@ -1,7 +1,14 @@
-'''
-从节点调用图，本案例是 LangGraph 中跨图状态交互的标准做法。
+"""
+【案例】代理节点调用子图：父子 State 字段完全不同，不能直接把子图挂成节点；在父图节点里手动构造子图输入、invoke 子图、再把结果写回父 State。
 
-核心逻辑解释
+对应教程章节：第 25 章 - LangGraph 高级特性 → 4、子图（Subgraphs）
+
+知识点速览：
+- 父状态 ParentState 专注业务（user_query / final_answer），子状态 SubgraphState 专注分析过程，二者无交集字段时必须「代理节点」做映射。
+- 代理节点签名仍为 (父 state) -> 父 state 的增量/全量；内部调用 compiled_subgraph.invoke(subgraph_input)。
+- 该模式可扩展任意形状的状态转换，是多智能体、流水线拆图时的常用技巧。
+
+核心逻辑解释：
 1. 状态结构差异设计
 父图状态（ParentState）：仅包含 user_query（用户输入）和 final_answer（最终结果），聚焦业务层；
 子图状态（SubgraphState）：
@@ -20,30 +27,30 @@
     代理节点必须接收父图状态、返回父图状态，子图调用通过 compiled_subgraph.invoke() 手动触发；
 灵活性：
     该模式可适配任意结构的父子图状态，只需在代理节点中自定义转换逻辑
-'''
+"""
 
-
-from langgraph.graph import StateGraph, START, END
 from typing import TypedDict
 
+from langgraph.graph import StateGraph, START, END
 
-# ====================== 1. 定义不同结构的父子图状态 ======================
+
+# 定义不同结构的父子图状态
 # 父图状态：仅包含用户查询和最终答案（与子图状态完全不同）
 class ParentState(TypedDict):
-    user_query: str  # 父图独有：用户输入的查询
-    final_answer: str | None  # 父图独有：子图处理后的最终结果
+    user_query: str
+    final_answer: str | None
+
 
 # 子图状态：专注于分析逻辑（与父图状态无重叠字段）
 class SubgraphState(TypedDict):
-    analysis_input: str  # 子图独有：分析输入
-    analysis_result: str  # 子图独有：分析结果
-    intermediate_steps: list  # 子图独有：中间步骤（私有数据）
+    analysis_input: str
+    analysis_result: str
+    intermediate_steps: list
 
 
-# ====================== 2. 定义子图核心逻辑 ======================
+# 定义子图核心逻辑
 def subgraph_analysis_node(state: SubgraphState) -> SubgraphState:
-    """子图核心节点：处理分析逻辑，生成结果"""
-    # 模拟子图的分析过程
+    """子图核心节点：模拟分析流水线。"""
     query = state["analysis_input"]
     state["intermediate_steps"] = [f"解析查询：{query}", "执行分析逻辑", "生成结果"]
     state["analysis_result"] = f"针对「{query}」的分析结果：这是子图处理后的内容"
@@ -51,48 +58,39 @@ def subgraph_analysis_node(state: SubgraphState) -> SubgraphState:
 
 
 def build_subgraph() -> StateGraph:
-    """构建并编译子图"""
     sub_builder = StateGraph(SubgraphState)
     sub_builder.add_node("subgraph_analysis_node", subgraph_analysis_node)
-
     sub_builder.add_edge(START, "subgraph_analysis_node")
     sub_builder.add_edge("subgraph_analysis_node", END)
     return sub_builder.compile()
 
 
-# 提前编译子图（供父图代理节点调用）
 compiled_subgraph = build_subgraph()
 
 
-# ============ 3. 定义父图代理节点（核心：状态转换+调用子图）从节点调用图=======
+# 定义父图代理节点（核心：状态转换+调用子图）从节点调用图
 def call_subgraph_proxy(state: ParentState) -> ParentState:
     """
-    父图的代理节点：
-    1. 将父图状态转换为子图所需的输入格式
-    2. 手动调用子图
-    3. 将子图输出映射回父图状态
+    父图代理节点：
+    1) 父 -> 子：拼子图输入；
+    2) 调用子图 invoke；
+    3) 子 -> 父：把 analysis_result 写入 final_answer。
     """
-
-    # 步骤1：父图状态 → 子图输入（状态转换）,提取父图的user_query，转换为子图需要的analysis_input
     subgraph_input = {
         "analysis_input": state["user_query"],
-        "intermediate_steps": [],  # 初始化子图的私有字段
-        "analysis_result": ""  # 初始化子图结果字段
+        "intermediate_steps": [],
+        "analysis_result": "",
     }
 
-    # 步骤2：手动调用编译后的子图，手动调用子图（而非直接将子图作为父图节点）
     subgraph_response = compiled_subgraph.invoke(subgraph_input)
 
-    # 步骤3：子图输出 → 父图状态（结果映射）
-    # 提取子图的analysis_result，赋值给父图的final_answer
     return {
-        "user_query": state["user_query"],  # 保留父图原有字段
-        "final_answer": subgraph_response["analysis_result"]
+        "user_query": state["user_query"],
+        "final_answer": subgraph_response["analysis_result"],
     }
 
 
-def build_parent_graph() -> StateGraph:
-    """构建并编译父图（添加代理节点，而非直接添加子图）"""
+def build_parent_graph():
     parent_builder = StateGraph(ParentState)
     # 添加代理节点（核心：手动处理状态转换+调用子图）
     parent_builder.add_node("call_subgraph_proxy", call_subgraph_proxy)
@@ -102,16 +100,14 @@ def build_parent_graph() -> StateGraph:
     return parent_builder.compile()
 
 
-# ====================== 4. 主方法 ======================
 def main():
-    """主函数：执行父图，验证跨图状态转换逻辑"""
     # 1. 构建父图
     parent_graph = build_parent_graph()
 
     # 2. 定义父图初始状态（仅包含user_query，符合父图状态结构）
     initial_state = {
         "user_query": "请分析Python中StateGraph的使用场景",
-        "final_answer": None
+        "final_answer": None,
     }
     print("父图初始状态：", initial_state)
 
@@ -125,3 +121,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""
+【输出示例】
+父图初始状态： {'user_query': '请分析Python中StateGraph的使用场景', 'final_answer': None}
+
+父图最终状态： {'user_query': '请分析Python中StateGraph的使用场景', 'final_answer': '针对「请分析Python中StateGraph的使用场景」的分析结果：这是子图处理后的内容'}
+
+子图处理后的最终答案： 针对「请分析Python中StateGraph的使用场景」的分析结果：这是子图处理后的内容
+"""

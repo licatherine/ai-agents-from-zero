@@ -1,12 +1,13 @@
 """
-要在LangGraph中使用时间旅行：
-（1）使用invoke或stream方法，以初始输入来运行图表。
-（2）识别现有线程中的检查点：使用get_state_history方法检索特定thread_id的执行历史，
-    并找到所需的checkpoint_id。然后，你可以找到截至该中断记录的最新检查点。
-（3）更新图状态（可选）：使用update_state方法在检查点修改图的状态，并从替代状态恢复执行。
-（4）从检查点恢复执行：使用invoke或stream方法，输入为None，配置中包含适当的thread_id和检查点ID
+【案例】时间旅行：在带 checkpointer 的图上先跑完全程，用 get_state_history 选历史快照，update_state 改写状态后 invoke(None, new_config) 从分叉点重跑。
 
-LangGraph 时间旅行演示
+对应教程章节：第 25 章 - LangGraph 高级特性 → 3、时间回溯（Time-Travel）
+
+知识点速览：
+- 基本步骤：（1）invoke/stream 跑图；（2）get_state_history 找 checkpoint_id；（3）可选 update_state 改 values；（4）invoke(None, config) 从指定检查点继续。
+- update_state 返回的新 config 含新 checkpoint，后续应使用该 config 作为「时间旅行起点」。
+- 本例用 InMemorySaver；索引 states1[2] 对应「create_character 执行之后」的快照，与历史顺序有关，学习时可打印 enumerate 对照。
+- NotRequired 表示该键在开始时可不出现，适合分步填满的故事状态。
 
 该演示展示了更复杂的时间旅行功能，包括：
 1. 运行图并生成多个状态
@@ -16,63 +17,43 @@ LangGraph 时间旅行演示
 """
 
 import uuid
-from typing_extensions import TypedDict, NotRequired
-from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver
+
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph import StateGraph, START, END
+from typing_extensions import TypedDict, NotRequired
 
 
 class StoryState(TypedDict):
-    """故事状态定义"""
-    character: NotRequired[str]  # character（角色/人物）
-    setting: NotRequired[str]    # setting（场景/背景）
-    plot: NotRequired[str]       # plot（情节/剧情）
-    ending: NotRequired[str]     # ending（结局/结尾）
+    """故事状态：字段均可逐步写入。"""
+
+    character: NotRequired[str]
+    setting: NotRequired[str]
+    plot: NotRequired[str]
+    ending: NotRequired[str]
 
 
 def create_character(state: StoryState):
-    """
-    创建故事角色
-    Args:
-        state: 当前状态
-    Returns:
-        dict: 更新后的状态
-    """
+    """创建故事角色（模拟 LLM 节点）。"""
     print("执行节点: create_character")
 
-    # 模拟LLM调用
     mock_character = "一只会说话的猫"
     print(f"创建的角色: {mock_character}")
     return {"character": mock_character}
 
 
 def set_setting(state: StoryState):
-    """
-    设置故事背景
-    Args:
-        state: 当前状态
-    Returns:
-        dict: 更新后的状态
-    """
+    """设置故事背景。"""
     print("执行节点: set_setting")
 
-    # 模拟LLM调用
     mock_setting = "在一个神秘的图书馆里"
     print(f"设置的背景: {mock_setting}")
     return {"setting": mock_setting}
 
 
 def develop_plot(state: StoryState):
-    """
-    发展故事情节
-    Args:
-        state: 当前状态
-    Returns:
-        dict: 更新后的状态
-    """
+    """发展故事情节。"""
     print("执行节点: develop_plot")
 
-    # 模拟LLM调用
     character = state.get("character", "未知角色")
     setting = state.get("setting", "未知背景")
     mock_plot = f"{character}在{setting}发现了一本会发光的书"
@@ -81,16 +62,9 @@ def develop_plot(state: StoryState):
 
 
 def write_ending(state: StoryState):
-    """
-    编写故事结局
-    Args:
-        state: 当前状态
-    Returns:
-        dict: 更新后的状态
-    """
+    """编写故事结局。"""
     print("执行节点: write_ending")
 
-    # 模拟LLM调用
     plot = state.get("plot", "未知剧情")
     mock_ending = f"当{plot}时，整个图书馆都被魔法光芒照亮了"
     print(f"编写的结局: {mock_ending}")
@@ -98,29 +72,23 @@ def write_ending(state: StoryState):
 
 
 def main():
-    """主函数 - 演示高级时间旅行功能"""
     print("=== LangGraph 高级时间旅行演示 ===\n")
 
-    # 构建工作流
     workflow = StateGraph(StoryState)
 
-    # 添加节点
     workflow.add_node("create_character", create_character)
     workflow.add_node("set_setting", set_setting)
     workflow.add_node("develop_plot", develop_plot)
     workflow.add_node("write_ending", write_ending)
 
-    # 添加边来连接节点
     workflow.add_edge(START, "create_character")
     workflow.add_edge("create_character", "set_setting")
     workflow.add_edge("set_setting", "develop_plot")
     workflow.add_edge("develop_plot", "write_ending")
     workflow.add_edge("write_ending", END)
 
-    # 编译
     graph = workflow.compile(checkpointer=InMemorySaver())
 
-    # 1. 运行图表生成第一个故事
     print("1. 生成第一个故事...")
     config1 = {
         "configurable": {
@@ -136,7 +104,6 @@ def main():
     print("话痨猫-图书馆-发光书-魔法亮")
     print()
 
-    # 2. 查看历史状态
     print("2. 查看第一个故事的历史状态...")
     states1 = list(graph.get_state_history(config1))
 
@@ -148,26 +115,20 @@ def main():
             print(f"     状态值: {state.values}")
         print()
 
-    # 3. 从中间状态恢复执行，创建第二个故事
     print("3. 从中间状态恢复执行，创建第二个故事...")
 
-    # 选择create_character执行后的状态
-    # 3. 下一步节点: ('set_setting',)
-    #  检查点ID: 1f103431-a499-650f-8001-b96045a4ed87
-    #  状态值: {'character': '一只会说话的猫'}
-    character_state = states1[2]  # 索引2对应create_character执行后的状态
+    # 索引需与 get_state_history 顺序一致；states1[2] 对应 create_character 执行后的快照（请以本地打印为准调整）
+    character_state = states1[2]
     print(f"选中的状态: {character_state.next}")
     print(f"选中的状态值: {character_state.values}")
 
-    # 更新状态，改变角色
     new_config = graph.update_state(
         character_state.config,
-        values={"character": "一只会飞的龙"}
+        values={"character": "一只会飞的龙"},
     )
     print(f"新配置: {new_config}")
     print()
 
-    # 4. 从新检查点恢复执行
     print("4. 从新检查点恢复执行，生成第二个故事...")
     story2 = graph.invoke(None, new_config)
     print(f"新角色: {story2['character']}")
@@ -176,7 +137,6 @@ def main():
     print(f"结局: {story2['ending']}")
     print()
 
-    # 5. 比较两个故事
     print("5. 比较两个故事:")
     print("  故事1:")
     print(f"    角色: {story1['character']}")
@@ -198,3 +158,76 @@ def main():
 if __name__ == "__main__":
     main()
 
+"""
+【输出示例】
+=== LangGraph 高级时间旅行演示 ===
+
+1. 生成第一个故事...
+执行节点: create_character
+创建的角色: 一只会说话的猫
+执行节点: set_setting
+设置的背景: 在一个神秘的图书馆里
+执行节点: develop_plot
+发展的剧情: 一只会说话的猫在在一个神秘的图书馆里发现了一本会发光的书
+执行节点: write_ending
+编写的结局: 当一只会说话的猫在在一个神秘的图书馆里发现了一本会发光的书时，整个图书馆都被魔法光芒照亮了
+角色: 一只会说话的猫
+背景: 在一个神秘的图书馆里
+剧情: 一只会说话的猫在在一个神秘的图书馆里发现了一本会发光的书
+结局: 当一只会说话的猫在在一个神秘的图书馆里发现了一本会发光的书时，整个图书馆都被魔法光芒照亮了
+话痨猫-图书馆-发光书-魔法亮
+
+2. 查看第一个故事的历史状态...
+历史状态:
+  0. 下一步节点: ()
+     检查点ID: 1f126a2f-a543-677c-8004-25ad704b46dc
+     状态值: {'character': '一只会说话的猫', 'setting': '在一个神秘的图书馆里', 'plot': '一只会说话的猫在在一个神秘的图书馆里发现了一本会发光的书', 'ending': '当一只会说话的猫在在一个神秘的图书馆里发现了一本会发光的书时，整个图书馆都被魔法光芒照亮了'}
+
+  1. 下一步节点: ('write_ending',)
+     检查点ID: 1f126a2f-a543-6114-8003-e6f6f5d0680f
+     状态值: {'character': '一只会说话的猫', 'setting': '在一个神秘的图书馆里', 'plot': '一只会说话的猫在在一个神秘的图书馆里发现了一本会发光的书'}
+
+  2. 下一步节点: ('develop_plot',)
+     检查点ID: 1f126a2f-a542-6bf6-8002-51b610dbb811
+     状态值: {'character': '一只会说话的猫', 'setting': '在一个神秘的图书馆里'}
+
+  3. 下一步节点: ('set_setting',)
+     检查点ID: 1f126a2f-a542-628c-8001-0117ba1c85fd
+     状态值: {'character': '一只会说话的猫'}
+
+  4. 下一步节点: ('create_character',)
+     检查点ID: 1f126a2f-a541-676a-8000-1e7372afa9ff
+
+  5. 下一步节点: ('__start__',)
+     检查点ID: 1f126a2f-a540-65d6-bfff-71b7980fbdd5
+
+3. 从中间状态恢复执行，创建第二个故事...
+选中的状态: ('develop_plot',)
+选中的状态值: {'character': '一只会说话的猫', 'setting': '在一个神秘的图书馆里'}
+新配置: {'configurable': {'thread_id': 'c9f337ef-562e-4c57-ac92-1c00f9d1c95b', 'checkpoint_ns': '', 'checkpoint_id': '1f126a2f-a545-666c-8003-f18761d213fb'}}
+
+4. 从新检查点恢复执行，生成第二个故事...
+执行节点: develop_plot
+发展的剧情: 一只会飞的龙在在一个神秘的图书馆里发现了一本会发光的书
+执行节点: write_ending
+编写的结局: 当一只会飞的龙在在一个神秘的图书馆里发现了一本会发光的书时，整个图书馆都被魔法光芒照亮了
+新角色: 一只会飞的龙
+背景: 在一个神秘的图书馆里
+剧情: 一只会飞的龙在在一个神秘的图书馆里发现了一本会发光的书
+结局: 当一只会飞的龙在在一个神秘的图书馆里发现了一本会发光的书时，整个图书馆都被魔法光芒照亮了
+
+5. 比较两个故事:
+  故事1:
+    角色: 一只会说话的猫
+    背景: 在一个神秘的图书馆里
+    剧情: 一只会说话的猫在在一个神秘的图书馆里发现了一本会发光的书
+    结局: 当一只会说话的猫在在一个神秘的图书馆里发现了一本会发光的书时，整个图书馆都被魔法光芒照亮了
+
+  故事2:
+    角色: 一只会飞的龙
+    背景: 在一个神秘的图书馆里
+    剧情: 一只会飞的龙在在一个神秘的图书馆里发现了一本会发光的书
+    结局: 当一只会飞的龙在在一个神秘的图书馆里发现了一本会发光的书时，整个图书馆都被魔法光芒照亮了
+
+=== 演示完成 ===
+"""

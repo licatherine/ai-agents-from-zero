@@ -1,64 +1,76 @@
-'''
-SqlitePersistence.py
-在底层，检查点功能由符合BaseCheckpointSaver接口的检查点对象提供支持。
-LangGraph提供了多种检查点实现，所有这些实现都通过独立的、可安装的库来完成，数据库类型的有：
-	langgraph-checkpoint-sqlite：使用SQLite数据库（SqliteSaver / AsyncSqliteSaver）存储检查点。
-非常适合实验和本地工作流程。需要单独安装。
-	langgraph-checkpoint-postgres：使用Postgres数据库（PostgresSaver / AsyncPostgresSaver）
-存储检查点，用于LangSmith。非常适合在生产环境中使用。需要单独安装。
-......
+"""
+【案例】SQLite 检查点 SqliteSaver：把检查点写入本地 .db 文件，进程重启仍可恢复同 thread_id 的会话。
 
-本次案例，安装sqlite所需依赖
-pip install langgraph-checkpoint-sqlite
+对应教程章节：第 25 章 - LangGraph 高级特性 → 2、状态持久化（Persistence）
 
-'''
+知识点速览：
+- 依赖包：项目根目录 `requirements.txt` 已包含 `langgraph-checkpoint-sqlite`；全量安装用 `pip install -r requirements.txt`，或单独 `pip install langgraph-checkpoint-sqlite`。生产环境更常用 Postgres（`langgraph-checkpoint-postgres`）等实现。
+- SqliteSaver(conn=...) 与 sqlite3.connect 配合；数据库文件路径需本机可写，目录需事先存在。
+- 与 InMemorySaver 用法相同：compile(checkpointer=...)、invoke(..., config)、get_state(config)。
+- LangGraph 还提供 langgraph-checkpoint-postgres 等，按部署环境选型。
+"""
 
 import sqlite3
 import operator
-from typing import TypedDict, Annotated
-from langgraph.checkpoint.sqlite import SqliteSaver
-from langgraph.graph import StateGraph,START,END
+from pathlib import Path
+from typing import Annotated, TypedDict
 
+from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.graph import StateGraph, START, END
 
 
 class MyState(TypedDict):
-    messages:Annotated[list,operator.add]
+    messages: Annotated[list, operator.add]
 
-def node_1(state:MyState):
 
-    return {"messages":["abc","def"]}
+def node_1(state: MyState):
+    return {"messages": ["abc", "def"]}
+
 
 def main():
-	# 数据存储到D:\\44目录下面，需要目录存在
-    conn = sqlite3.connect(database="D:\\44\\sqlite_data.db",check_same_thread=False)
-    sqliteDB = SqliteSaver(conn=conn)
+    # 默认写在项目旁，避免硬编码 Windows 盘符
+    db_dir = Path(__file__).resolve().parent / "sqlite_checkpoints"
+    db_dir.mkdir(parents=True, exist_ok=True)
+    db_path = db_dir / "sqlite_data.db"
+
+    conn = sqlite3.connect(database=str(db_path), check_same_thread=False)
+    sqlite_db = SqliteSaver(conn=conn)
 
     builder = StateGraph(MyState)
-    builder.add_node("node_1",node_1)
+    builder.add_node("node_1", node_1)
 
     builder.add_edge(START, "node_1")
     builder.add_edge("node_1", END)
 
-    graph = builder.compile(checkpointer=sqliteDB)
-    # 同一个用户id下，每次执行都会插入一次新数据，上课时记得修改用户编号或者直接删除D:\\44\\sqlite_data.db
+    graph = builder.compile(checkpointer=sqlite_db)
+
+    # 同一 thread_id 表示同一会话；多次执行会累积检查点，调试时可删 .db 或换 thread_id
     config = {"configurable": {"thread_id": "user-001"}}
 
     initial_state = graph.get_state(config)
     print(f"Initial state: {initial_state}")
 
-    # 执行图
-    result = graph.invoke({"messages":[]}, config)
+    result = graph.invoke({"messages": []}, config)
     print(f"Result: {result}")
 
     print()
     print("====================查看执行后的状态====================")
-    # 查看执行后的状态
     final_state = graph.get_state(config)
     print()
     print(f"Final state: {final_state}")
 
     conn.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
 
+"""
+【输出示例】
+Initial state: StateSnapshot(values={}, next=(), config={'configurable': {'thread_id': 'user-001'}}, metadata=None, created_at=None, parent_config=None, tasks=(), interrupts=())
+Result: {'messages': ['abc', 'def']}
+
+====================查看执行后的状态====================
+
+Final state: StateSnapshot(values={'messages': ['abc', 'def']}, next=(), config={'configurable': {'thread_id': 'user-001', 'checkpoint_ns': '', 'checkpoint_id': '1f1272f0-d724-675e-8001-bb885d01bb16'}}, metadata={'source': 'loop', 'step': 1, 'parents': {}}, created_at='2026-03-24T03:10:46.773535+00:00', parent_config={'configurable': {'thread_id': 'user-001', 'checkpoint_ns': '', 'checkpoint_id': '1f1272f0-d723-6a48-8000-d3aac2954c9d'}}, tasks=(), interrupts=())
+"""

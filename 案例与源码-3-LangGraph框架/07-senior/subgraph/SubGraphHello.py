@@ -1,55 +1,50 @@
 """
-在LangGraph中，一个Graph除了可以单独使用，还可以作为一个Node，嵌入到一个Graph中。这种用法就称为子图。
-通过子图，我们可以更好的重用Graph，构建更复杂的工作流。尤其在构建多Agent系统时非常有用。
-在大型项目中，通常都是由一个团队专门开发Agent，再通过其他团队来完成Agent整合。
+【案例】子图作为节点：将 compile 后的子图直接 add_node 进父图；父子共用同一 State 类型时，由 Reducer 合并 messages。
 
-使用子图时，基本和使用Node没有太多的区别。唯一需要注意的是，当触发了SubGraph代表的Node后，
-实际上是相当于重新调用了一次subgraph.invoke(state)方法
+对应教程章节：第 25 章 - LangGraph 高级特性 → 4、子图（Subgraphs）
 
-案例说明：
-    定义一个子图节点处理函数 sub_node，它接收一个状态对象并返回包含子图响应消息的新状态。
-    该函数被集成到一个使用 langgraph 构建的图结构中，最终执行图并输出结果。
+知识点速览：
+- 子图即「可编译的 StateGraph」，与普通节点一样注册到父图；触发时在子图内相当于执行子图的 invoke。
+- 父子状态结构相同、且 messages 使用 add（列表拼接）时：子图返回的列表会与父图传入的列表合并，再与父图侧合并，可能出现重复前缀，本例用于观察合并语义。
+- 多 Agent 场景下常把单个 Agent 封装成子图以便复用；大型项目可由不同团队分别交付子图再集成。
 """
 
 from operator import add
-from typing import TypedDict, Annotated
-from langgraph.constants import END
-from langgraph.graph import StateGraph, MessagesState, START
-import operator
+from typing import Annotated, TypedDict
 
-class AtguiguState(TypedDict):
+from langgraph.constants import END
+from langgraph.graph import StateGraph, START
+
+
+class DiliState(TypedDict):
     """
-    定义状态类，用于存储图节点间传递的消息状态
-    messages: 使用add函数合并的字符串列表消息
-    add 是 LangGraph 内置的状态合并策略，它的行为是：将新返回的列表与原状态中的列表进行拼接（而非覆盖）
+    状态：messages 使用 operator.add 合并策略——新返回的列表与原有列表拼接（非覆盖）。
     """
+
     messages: Annotated[list[str], add]
 
-def sub_node(state:AtguiguState) -> AtguiguState:
-    # 子图节点处理函数，接收当前状态并返回响应消息
-    # @param state 当前状态对象，包含消息列表
-    # @return 包含子图响应消息的新状态
+
+def sub_node(state: DiliState) -> DiliState:
     return {"messages": ["response from subgraph"]}
 
-# 创建子图构建器并配置节点和边
-subgraph_builder = StateGraph(AtguiguState)
-subgraph_builder.add_node("sub_node", sub_node)
 
+# --- 子图 ---
+subgraph_builder = StateGraph(DiliState)
+subgraph_builder.add_node("sub_node", sub_node)
 subgraph_builder.add_edge(START, "sub_node")
 subgraph_builder.add_edge("sub_node", END)
 subgraph = subgraph_builder.compile()
 
-# 创建主图构建器并添加子图节点
-builder = StateGraph(AtguiguState)
+# --- 父图：节点即子图 ---
+builder = StateGraph(DiliState)
 builder.add_node("subgraph_node", subgraph)
 builder.add_edge(START, "subgraph_node")
 builder.add_edge("subgraph_node", END)
 
-# 编译主图并绘制结构图
 graph = builder.compile()
 
-# 执行图并打印结果
-'''子图调用的状态传递逻辑当主图调用子图节点时，整个过程会触发两次状态合并：
+"""
+子图调用的状态传递逻辑当主图调用子图节点时，整个过程会触发两次状态合并：
 第一步：主图把初始状态 {"messages": ["main-graph"]} 传递给子图
 
 第二步：子图内部执行 sub_node，返回 {"messages": ["response from subgraph"]}，
@@ -59,14 +54,34 @@ graph = builder.compile()
 第三步：子图执行完成后，主图会再次应用 add 策略，
     把主图原有的 ["main-graph"]
     和子图返回的 ["main-graph", "response from subgraph"] 拼接，
-    最终得到 ["main-graph", "main-graph", "response from subgraph"]'''
+    最终得到 ["main-graph", "main-graph", "response from subgraph"]
+"""
 print(graph.invoke({"messages": ["main-graph"]}))
-print()# {'messages': ['main-graph', 'main-graph', 'response from subgraph']}
+print()
+# 预期形态示例：{'messages': ['main-graph', 'main-graph', 'response from subgraph']}
 
-
-#绘制子图结构图
 print(subgraph.get_graph().draw_mermaid())
-print("="*50)
+print("=" * 50)
 print()
 
+"""
+【输出示例】
+{'messages': ['main-graph', 'main-graph', 'response from subgraph']}
 
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+        __start__([<p>__start__</p>]):::first
+        sub_node(sub_node)
+        __end__([<p>__end__</p>]):::last
+        __start__ --> sub_node;
+        sub_node --> __end__;
+        classDef default fill:#f2f0ff,line-height:1.2
+        classDef first fill-opacity:0
+        classDef last fill:#bfb6fc
+
+==================================================
+"""

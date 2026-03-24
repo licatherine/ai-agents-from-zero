@@ -54,5 +54,10 @@ mcp>=1.0
 langchain-classic>=1.0
 langchain-mcp-adapters>=0.2
 
+# ---------- LangGraph（第 22–26 章、案例与源码-3-LangGraph框架） ----------
+langgraph>=1.0,<2
+# SQLite 检查点：案例 SqlitePersistence.py 使用 langgraph.checkpoint.sqlite.SqliteSaver 时需此包（标准库 sqlite3 无需另装）
+langgraph-checkpoint-sqlite>=2.0,<4
+
 # ---------- 代码格式（可选，用于统一 .py 风格） ----------
 black>=24.0

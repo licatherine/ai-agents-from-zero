@@ -1,9 +1,22 @@
+"""
+【案例】Handoff：用 Command + Send 把控制权与消息状态交给指定 Agent；create_task_description_handoff_tool 生成「移交」工具，子 Agent 可互相转接。
+
+对应教程章节：第 26 章 - LangGraph 多智能体与 A2A → 2、多智能体案例：Supervisor 与 Handoff
+
+知识点速览：
+- Handoff 与「把子 Agent 当工具调」不同：显式构造下一跳输入 state，并用 Command(goto=[Send(...)], graph=Command.PARENT) 跳转到兄弟节点。
+- InjectedState 把当前 MessagesState 注入工具，便于携带对话历史；task_description 作为「交给下一位的工单说明」。
+- flight_assistant / hotel_assistant 由 create_agent 构建并作为节点加入同一 StateGraph，START 指向默认入口 Agent。
+- @tool 装饰的业务工具仍需 docstring；运行前配置 API Key 与网络。
+"""
+
 import os
 from typing import Annotated
+
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
-from langchain.agents import create_agent
 from langgraph.graph import StateGraph, START
 from langgraph.graph.message import MessagesState
 from langgraph.prebuilt.tool_node import InjectedState
@@ -29,13 +42,17 @@ model = init_llm_model()
 # ===============================
 # 2. 通用 Handoff 工具工厂
 # ===============================
-def create_task_description_handoff_tool(*, agent_name: str, description: str | None = None):
+def create_task_description_handoff_tool(
+    *, agent_name: str, description: str | None = None
+):
     name = f"transfer_to_{agent_name}"
     description = description or f"移交给 {agent_name}"
 
     @tool(name, description=description)
     def handoff_tool(
-        task_description: Annotated[str,"描述下一个 Agent 应该做什么，包括所有必要信息"],
+        task_description: Annotated[
+            str, "描述下一个 Agent 应该做什么，包括所有必要信息"
+        ],
         state: Annotated[MessagesState, InjectedState],
     ) -> Command:
         task_description_message = {
@@ -95,13 +112,13 @@ transfer_to_hotel_assistant = create_task_description_handoff_tool(
 # ===============================
 flight_assistant = create_agent(
     model=model,
-    tools=[book_flight, transfer_to_hotel_assistant], # 包含移交工具
+    tools=[book_flight, transfer_to_hotel_assistant],  # 包含移交工具
     name="flight_assistant",
 )
 
 hotel_assistant = create_agent(
     model=model,
-    tools=[book_hotel, transfer_to_flight_assistant], # 包含移交工具
+    tools=[book_hotel, transfer_to_flight_assistant],  # 包含移交工具
     name="hotel_assistant",
 )
 

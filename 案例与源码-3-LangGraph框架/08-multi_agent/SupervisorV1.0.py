@@ -1,10 +1,22 @@
+"""
+【案例】Supervisor（推荐接口）：子 Agent 用 langchain.agents.create_agent，主管用 langgraph_supervisor.create_supervisor；交互式输入 + 流式输出 + 简单中文过滤。
+
+对应教程章节：第 26 章 - LangGraph 多智能体与 A2A → 2、多智能体案例：Supervisor 与 Handoff
+
+知识点速览：
+- pip install langgraph-supervisor；子 Agent 的工具函数必须具备清晰 docstring，便于模型绑定工具模式。
+- create_supervisor(...).compile() 得到可 stream/invoke 的图；主管 prompt 描述调用顺序与语言约束。
+- filter_messages 用于弱化移交过程英文提示、去重，教学演示可忽略实现细节，重点理解主管—子 Agent 数据流。
+- 文末保留【输出实例】字符串，便于对照本地运行结果（模型输出可能略有差异）。
+"""
+
 import os
 import re
-from langchain_openai import ChatOpenAI
+
 from langchain.agents import create_agent
+from langchain_openai import ChatOpenAI
 from langgraph_supervisor import create_supervisor
 
-# 初始化：pip install langgraph-supervisor
 
 # 1. 初始化大语言模型
 def init_llm_model() -> ChatOpenAI:
