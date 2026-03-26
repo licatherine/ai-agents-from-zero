@@ -236,9 +236,9 @@ create_agent(模型、工具、提示等) → [Agent]   # 底层多由 LangGraph
 
 <img src="images/9/9-4-1-1.png" style="zoom:72%;" alt="LangChain Model I/O：Format（格式化）/ Predict（调用模型）/ Parse（解析输出）三阶段示意"/>
 
-1. **Format（格式化）**：通过模板管理大模型的输入，把业务数据填入模板再送给模型。
-2. **Predict（预测）**：调用 LLM / Chat 模型完成生成或推理。
-3. **Parse（解析）**：把自然语言输出规范成结构化结果（如 JSON），便于下游程序使用。
+- **Format（输入格式化）**：把原始业务输入整理成模型更容易理解的形式，常见做法是使用提示词模板（Prompt Template）管理变量与上下文，避免手写字符串拼接。
+- **Predict（模型调用）**：通过统一接口调用不同模型（OpenAI、DeepSeek、通义、Ollama 等），屏蔽厂商差异，聚焦业务逻辑。
+- **Parse（输出解析）**：将模型返回从自然语言转为程序可直接处理的结构化结果（如 JSON、列表、对象），便于后续链路使用。
 
 ### 4.2 Chains（链）
 
