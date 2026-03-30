@@ -1,12 +1,12 @@
 """
 【案例】文本提示词模板：partial_variables 与 partial()
 
-对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
+对应教程章节：第 13 章 - 提示词与消息模板 → 6、文本提示词模板（PromptTemplate）
 
 知识点速览：
-- partial_variables：在「创建模板时」就固定一部分占位符的值，后面 format 时只需传剩余变量。
-- partial(kwargs)：在「已有模板上」固定部分变量，返回一个**新模板**，可继续 format 剩余变量。
-- 典型用法：先把「系统角色、当前时间」等固定，每次只传用户问题。
+- `partial_variables` 用于“创建模板时就固定一部分变量”，`partial()` 用于“已有模板上再固定一部分变量”。
+- 两者都能实现“先固定公共部分，后续只传变化部分”，只是发生的时机不同。
+- 真实项目里，这类写法很适合沉淀稳定角色、固定规则、时间戳等公共上下文。
 """
 
 from langchain_core.prompts import PromptTemplate
@@ -55,4 +55,3 @@ print(template3.format(bar="world"))  # hello world
 li4 world
 hello world
 """
-

@@ -1,11 +1,12 @@
 """
 【案例】文本提示词模板：from_template 创建 PromptTemplate
 
-对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
+对应教程章节：第 13 章 - 提示词与消息模板 → 6、文本提示词模板（PromptTemplate）
 
 知识点速览：
-- from_template("...")：传入带占位符的字符串即可，LangChain 会自动推断变量（所有 {xxx}），无需手写 input_variables。
-- 适合快速写模板；与构造函数方式二选一即可。format(占位符=值) 得到最终字符串。
+- `from_template("...")` 是创建 `PromptTemplate` 的快捷写法，LangChain 会自动识别模板中的占位符变量。
+- 它适合快速写实验代码和教学示例；如果你想把变量写得更显式，可以改用构造函数。
+- `format(...)` 之后得到的是字符串，这一点与第 13 章正文的主线保持一致。
 """
 
 from langchain_core.prompts import PromptTemplate
@@ -30,8 +31,9 @@ print(type(prompt))  # <class 'str'>
 """
 【输出示例】
 你是一个专业的python开发工程师，请回答我的问题给出回答，我的问题是：快速排序怎么写？
+
+
+
+请给我一个关于量子力学的详细解释。
+<class 'str'>
 """
-
-# 请给我一个关于量子力学的详细解释。
-# <class 'str'>
-

@@ -1,11 +1,11 @@
 """
 【案例】文本提示词模板：组合多个 PromptTemplate
 
-对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
+对应教程章节：第 13 章 - 提示词与消息模板 → 6、文本提示词模板（PromptTemplate）
 
 知识点速览：
-- 多个 PromptTemplate 可用 + 按逻辑拼接，形成更长的整体提示（多阶段、多输入源等）。
-- 相加后得到新的「组合模板」，format 时传入所有占位符即可。
+- 多个 `PromptTemplate` 可以通过 `+` 组合成一个更长的整体提示，适合把“角色说明、业务规则、当前任务”拆开维护。
+- 组合后仍然是新的模板对象，`format(...)` 时需要传入所有占位符变量。
 """
 
 from langchain_core.prompts import PromptTemplate
@@ -32,4 +32,3 @@ print(prompt2)
 请用一句话介绍LangChain，要求通俗易懂
 内容不超过200个字
 """
-

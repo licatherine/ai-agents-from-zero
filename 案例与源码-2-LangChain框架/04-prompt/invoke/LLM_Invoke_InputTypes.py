@@ -1,13 +1,13 @@
 """
 【案例】invoke / ainvoke 的多种输入类型（字符串、Message 列表、元组列表、字典列表）
 
-对应教程章节：第 13 章 → 2、模型调用方法
+对应教程章节：第 13 章 → 2、调用大模型的入参类型
 
 知识点速览：
-- 聊天模型的 invoke 不仅接受 str 与 List[BaseMessage]，还可接受 (role, content) 元组列表、
-  {"role","content"} 字典列表；LangChain 会在内部转成统一的消息表示。
-- 元组第一项常用 "system" / "human" / "ai"；与 OpenAI 对齐时也有人写 "user" / "assistant"，
-  若遇兼容问题，优先用 Message 类显式构造。
+- 聊天模型的 `invoke` 不只接受字符串，也常接受消息对象列表、`(role, content)` 元组列表、
+  `{"role": "...", "content": "..."}` 字典列表。
+- 这些写法的目标都是表达“这次输入由哪些角色、哪些内容组成”；LangChain 会在内部转成统一的消息表示。
+- 初学者若想把角色关系看得最清楚，优先用 `SystemMessage`、`HumanMessage` 等 Message 类写法。
 """
 
 import asyncio
@@ -72,3 +72,15 @@ if __name__ == "__main__":
     demo_dict_list()
     print("--- ainvoke + 元组 ---")
     asyncio.run(demo_ainvoke_tuple())
+
+"""
+【输出示例】
+--- Message 对象列表 ---
+<class 'langchain_core.messages.ai.AIMessage'> 我是Qwen，阿里巴巴研发的超大规模语言模型。
+--- 元组列表 ---
+<class 'langchain_core.messages.ai.AIMessage'> 我是Qwen，阿里巴巴研发的超大规模语言模型。
+--- 字典列表 ---
+<class 'langchain_core.messages.ai.AIMessage'> 我是Qwen，阿里巴巴研发的超大规模语言模型。
+--- ainvoke + 元组 ---
+<class 'langchain_core.messages.ai.AIMessage'> 素数（或质数）是指大于1的自然数中，除了1和它本身之外不再有其他正因数的数。
+"""

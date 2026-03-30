@@ -4,7 +4,7 @@
 
 **本章课程目标：**
 
-- 从初学者视角建立对 **LangChain** 的整体认识，知道它是什么、解决什么问题、在 AI 应用开发里处于什么位置。
+- 建立对 **LangChain** 的整体认识，知道它是什么、解决什么问题、在 AI 应用开发里处于什么位置。
 - 理解 LangChain 在 **1.x 时代**的产品边界、包结构、版本演进，以及它与 **LangGraph、LangSmith、Deep Agents** 的关系。
 - 建立对 **Model I/O、Chains、Memory、Retrieval、Tools/Agents、Callbacks** 的**六大核心模块**整体认知。
 

@@ -1,11 +1,12 @@
 """
 【案例】PromptTemplate 的 partial() 方法
 
-对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
+对应教程章节：第 13 章 - 提示词与消息模板 → 6、文本提示词模板（PromptTemplate）
 
 知识点速览：
-- partial(kwargs)：固定模板中部分占位符，返回新模板，之后只需 format 剩余变量。
-- 典型用法：先 partial(role="...") 定好角色，后面多次 format(question="...") 问不同问题，避免重复传 role。
+- `partial(...)` 会返回一个新的 `PromptTemplate`，原模板本身不会被修改。
+- 它适合把长期稳定的变量先固定下来，例如角色、人设、固定规则等，再多次填充变化部分。
+- 和 `partial_variables` 的关系可以理解为：一个是在创建时固定，一个是在使用过程中继续固定。
 """
 
 from langchain_core.prompts import PromptTemplate
@@ -31,8 +32,7 @@ print(type(prompt))
 【输出示例】
 input_variables=['question'] input_types={} partial_variables={'role': 'python开发'} template='你是一个专业的{role}工程师，请回答我的问题给出回答，我的问题是：{question}'
 <class 'langchain_core.prompts.prompt.PromptTemplate'>
-"""
 
 # 你是一个专业的python开发工程师，请回答我的问题给出回答，我的问题是：冒泡排序怎么写？
 # <class 'str'>
-
+"""

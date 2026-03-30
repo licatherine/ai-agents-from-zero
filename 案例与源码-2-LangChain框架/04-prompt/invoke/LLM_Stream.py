@@ -1,16 +1,13 @@
 """
 【案例】模型调用：同步 stream（流式输出）
 
-对应教程章节：第 13 章 - 提示词与消息模板 → 2、模型调用方法
+对应教程章节：第 13 章 - 提示词与消息模板 → 4、调用大模型的调用方式
 
 知识点速览：
-- stream：流式响应。模型「生成一点就返回一点」，不必等整段话写完再一次性返回。
-- 适用场景：聊天界面「打字机」效果、长文生成，用户能边等边看到内容，体验更好。
-- 与 invoke 区别：invoke 等全部生成完再返回；stream 返回一个可迭代对象，用 for 循环逐块取内容。
+- `stream` 适合做“边生成边展示”的交互体验，尤其常见于聊天界面和长文本生成。
+- 与 `invoke` 不同，`stream` 返回的是可迭代对象；循环中的每一块通常是 `AIMessageChunk`。
+- 项目里如果你只想先跑通最基础调用，优先学 `invoke`；需要打字机效果时再切到 `stream`。
 """
-
-from langchain_core.messages.ai import AIMessageChunk
-
 
 import os
 from dotenv import load_dotenv
@@ -35,7 +32,7 @@ messages = [
 
 # ---------- 3. 流式调用：model.stream(messages) ----------
 # stream 返回的是一个「生成器」（generator），不会等模型全部生成完才返回；
-# 边生成边 yield，每次 for 取到的一小块类型是 AIMessageChunk。所以这里 type(response) 是 generator。
+# 边生成边 yield，每次 for 取到的一小块通常是 AIMessageChunk。所以这里 type(response) 是 generator。
 # 对比：invoke/ainvoke 等全部生成完一次性返回 → 类型是 AIMessage（一条完整消息）。
 response = model.stream(messages)
 print(f"响应类型：{type(response)}")
@@ -53,4 +50,3 @@ print("\n")
 """
 
 # 你今天有什么想了解的，或者需要我帮什么忙吗？✨
-

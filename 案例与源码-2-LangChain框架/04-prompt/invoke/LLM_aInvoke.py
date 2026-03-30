@@ -1,18 +1,18 @@
 """
 【案例】模型调用：异步 ainvoke
 
-对应教程章节：第 13 章 - 提示词与消息模板 → 2、模型调用方法
+对应教程章节：第 13 章 - 提示词与消息模板 → 4、调用大模型的调用方式
 
 知识点速览：
-- ainvoke：异步版 invoke，等待模型响应时不阻塞主线程，可同时发起多个请求；适合高并发 Web（如 FastAPI）、大批量请求。
-- 用法：ainvoke 为异步方法，须在 async 函数内用 await 调用，入口用 asyncio.run() 驱动。
+- `ainvoke` 是 `invoke` 的异步版本，等待模型返回时不会阻塞事件循环。
+- 它适合异步 Web 服务、并发任务和需要同时处理多条请求的场景。
+- 返回结果类型通常仍是 `AIMessage`；只是调用方式从“直接返回”变成了“`await` 后返回”。
 """
 
 import os
 import asyncio
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
-from langchain.messages import HumanMessage, SystemMessage
 
 load_dotenv()
 
@@ -28,7 +28,7 @@ model = init_chat_model(
 async def main():
     """异步主函数：必须用 async def，内部用 await 调用 ainvoke。"""
     # ---------- 2. 异步调用一条请求 ----------
-    # 这里传入的是「纯字符串」也可以（部分模型支持）；多角色时仍可传 messages 列表。
+    # 这里演示最简单的字符串输入；若需要系统设定、多轮上下文，也可以像同步 invoke 一样传 messages 列表。
     # await：等待模型返回时不阻塞事件循环，其他协程可同时执行。
     response = await model.ainvoke("解释一下LangChain是什么，简洁回答100字以内")
     print(f"响应类型：{type(response)}")
@@ -45,4 +45,3 @@ if __name__ == "__main__":
 响应类型：<class 'langchain_core.messages.ai.AIMessage'>
 [{'type': 'text', 'text': 'LangChain是一个开源框架，用于构建基于大语言模型（LLM）的应用程序。它提供模块化组件（如链、代理、记忆、工具集成等），支持提示工程、数据检索增强（RAG）、多步推理和外部工具调用，简化LLM应用的开发、编排与部署。'}]
 """
-

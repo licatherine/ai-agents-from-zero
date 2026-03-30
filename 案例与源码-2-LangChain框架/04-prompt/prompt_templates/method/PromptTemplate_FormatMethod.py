@@ -1,11 +1,12 @@
 """
 【案例】PromptTemplate 的 format() 方法
 
-对应教程章节：第 13 章 - 提示词与消息模板 → 4、文本提示词模板（PromptTemplate）
+对应教程章节：第 13 章 - 提示词与消息模板 → 6、文本提示词模板（PromptTemplate）
 
 知识点速览：
-- format(kwargs)：为模板里所有占位符赋值，返回**一条字符串**。若少传了某个变量会报错。
-- 最常用：得到字符串后可以交给 model.invoke(prompt)（若模型支持纯文本输入）。
+- `format(...)` 是 `PromptTemplate` 最常用的方法：填入变量后直接得到一条字符串。
+- 如果模板中还有未传入的占位符，`format(...)` 会报错，因此它也能帮助你尽早发现参数遗漏。
+- 这类字符串既可以直接发给模型，也可以继续作为后续 Prompt 组合的一部分。
 """
 
 from langchain_core.prompts import PromptTemplate
@@ -26,4 +27,3 @@ print(type(prompt))
 你是一个专业的python开发工程师，请回答我的问题给出回答，我的问题是：二分查找算法怎么写？
 <class 'str'>
 """
-

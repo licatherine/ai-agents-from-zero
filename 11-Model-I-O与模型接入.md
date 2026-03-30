@@ -4,7 +4,7 @@
 
 **本章课程目标：**
 
-- 从初学者视角真正理解 **Model I/O** 是什么，它为什么是 LangChain 中最基础、最核心的一层。
+- 理解 **Model I/O** 是什么，它为什么是 LangChain 中最基础、最核心的一层。
 - 理解 LangChain 的 **Model I/O** 模块：输入提示（Prompt）、调用模型（Model）、输出解析（Parser）三件套。
 - 掌握 LangChain 里最常见的**模型分类**、**标准化参数**、**返回值结构**，尤其是 Chat Model 与 `AIMessage`。
 
