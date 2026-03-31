@@ -6,10 +6,10 @@
 知识点速览：
 - 与 Memory_RunnableWithMessageHistory 的区别：本案例用 get_session_history(session_id) 从 store 中按 session 取不同 history，可支持多用户/多会话（每 session 独立历史）。
 - MessagesPlaceholder("history") 与 prompt 中的变量名一致，RunnableWithMessageHistory 会把读到的历史注入此处；input_messages_key、history_messages_key 需与 prompt 占位符对应。
+- 本案例会同时演示 user-001 与 user-002 两个 session，帮助你直观看到“同一套链逻辑，如何切换到不同历史”。
 - 生产环境可将 store 换成 Redis、数据库等，get_session_history 返回 RedisChatMessageHistory(session_id=session_id, ...) 即可实现持久化（见 6.2）。
 """
 
-from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv(encoding="utf-8")
@@ -64,13 +64,20 @@ with_history = RunnableWithMessageHistory(
     history_messages_key="history",
 )
 
-cfg = {"configurable": {"session_id": "user-001"}}
+cfg_user_001 = {"configurable": {"session_id": "user-001"}}
+cfg_user_002 = {"configurable": {"session_id": "user-002"}}
 
-print("用户：我叫张三。")
-print("AI：", with_history.invoke({"question": "我叫张三。"}, cfg))
+print("用户A（user-001）：我叫张三。")
+print("AI：", with_history.invoke({"question": "我叫张三。"}, cfg_user_001))
 
-print("\n用户：我叫什么？")
-print("AI：", with_history.invoke({"question": "我叫什么？"}, cfg))
+print("\n用户B（user-002）：我叫李四。")
+print("AI：", with_history.invoke({"question": "我叫李四。"}, cfg_user_002))
+
+print("\n用户A（user-001）：我叫什么？")
+print("AI：", with_history.invoke({"question": "我叫什么？"}, cfg_user_001))
+
+print("\n用户B（user-002）：我叫什么？")
+print("AI：", with_history.invoke({"question": "我叫什么？"}, cfg_user_002))
 
 # ---------- 查看当前存储了哪些历史数据 ----------
 # store 的 key 为 session_id，value 为该会话的 InMemoryChatMessageHistory
@@ -80,32 +87,44 @@ for sid, history in store.items():
     print(f"[session_id={sid}] 共 {len(history.messages)} 条消息:")
     for i, msg in enumerate(history.messages):
         # msg 有 .type（如 human/ai）、.content（文本内容）
-        content_preview = (
-            (msg.content[:50] + "…") if len(str(msg.content)) > 50 else msg.content
-        )
+        content = str(msg.content)
+        content_preview = (content[:50] + "…") if len(content) > 50 else content
         print(f"  {i+1}. [{msg.type}] {content_preview}")
 print("--- 以上 ---\n")
 
 """
 【输出示例】
-用户：我叫张三。
-AI： 你好，张三！很高兴认识你～😊
+用户A（user-001）：我叫张三。
+AI： 你好，张三！很高兴认识你～😊  
 有什么我可以帮你的吗？
+
+用户B（user-002）：我叫李四。
+AI： 你好，李四！很高兴认识你～😊  
+有什么我可以帮你的吗？
+
+用户A（user-001）：我叫什么？
+AI： 你叫张三！😄  
+之前你已经告诉过我啦～需要我帮你做点什么吗？
+
+用户B（user-002）：我叫什么？
+AI： 你叫李四！😄  
+之前你已经告诉过我啦～需要我帮你做点什么吗？
+
+--- 当前 store 中的历史数据 ---
+[session_id=user-001] 共 4 条消息:
+  1. [human] 我叫张三。
+  2. [ai] 你好，张三！很高兴认识你～😊  
+有什么我可以帮你的吗？
+  3. [human] 我叫什么？
+  4. [ai] 你叫张三！😄  
+之前你已经告诉过我啦～需要我帮你做点什么吗？
+[session_id=user-002] 共 4 条消息:
+  1. [human] 我叫李四。
+  2. [ai] 你好，李四！很高兴认识你～😊  
+有什么我可以帮你的吗？
+  3. [human] 我叫什么？
+  4. [ai] 你叫李四！😄  
+之前你已经告诉过我啦～需要我帮你做点什么吗？
+--- 以上 ---
+
 """
-
-# 用户：我叫什么？
-# AI： 你叫张三！😄
-# （刚刚你已经自我介绍过啦～）
-# 需要我帮你做点什么吗？比如记个事项、解答问题、写点文字，或者聊聊天？
-
-# --- 当前 store 中的历史数据 ---
-# [session_id=user-001] 共 4 条消息:
-#   1. [human] 我叫张三。
-#   2. [ai] 你好，张三！很高兴认识你～😊
-# 有什么我可以帮你的吗？
-#   3. [human] 我叫什么？
-#   4. [ai] 你叫张三！😄
-# （刚刚你已经自我介绍过啦～）
-# 需要我帮你做点什么吗？比如记个事项、解答问题、写…
-# --- 以上 ---
-

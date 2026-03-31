@@ -4,18 +4,18 @@
 对应教程章节：第 16 章 - 记忆与对话历史 → 6、案例代码 → 6.2 持久化：Redis 存储 → Redis 对话历史示例
 
 知识点速览：
-- RedisChatMessageHistory(session_id=..., url=REDIS_URL) 将消息存到 Redis，重启后仍可恢复；同一 session_id 对应同一会话历史。
-- RunnableWithMessageHistory 的 get_session_history 返回 RedisChatMessageHistory 实例，链会在每次 invoke 时读/写该会话历史。
-- redis_client.save() 可强制持久化到 dump.rdb（按需调用）；默认连接 redis://localhost:6379，可通过环境变量 REDIS_URL 覆盖（如 Redis Stack 用 26379 时可设 REDIS_URL=redis://localhost:26379）。
+- 这个案例和内存版的核心链路没有变化，变化的只是 get_session_history(...) 返回的存储后端：从 InMemoryChatMessageHistory 换成 RedisChatMessageHistory。
+- RunnableWithMessageHistory 负责“什么时候读写历史”，RedisChatMessageHistory 负责“历史存到哪里”；两者是配合关系，不是替代关系。
+- 项目依赖更推荐使用 langchain-redis；若本地环境仍只有 langchain-community，本示例会自动回退，便于旧环境继续运行。
+- 默认连接 redis://localhost:6379，可通过环境变量 REDIS_URL 覆盖；如果你用的是 Redis Stack 的宿主机映射端口，可设 REDIS_URL=redis://localhost:26379。
 """
 
-from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv(encoding="utf-8")
 
 from langchain.chat_models import init_chat_model
-from langchain_community.chat_message_histories import RedisChatMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableConfig
@@ -23,8 +23,18 @@ import os
 import redis
 from loguru import logger
 
+try:
+    from langchain_redis import RedisChatMessageHistory
+
+    USE_LANGCHAIN_REDIS = True
+except ModuleNotFoundError:
+    from langchain_community.chat_message_histories import RedisChatMessageHistory
+
+    USE_LANGCHAIN_REDIS = False
+
 # 支持环境变量 REDIS_URL；未设置时默认 localhost:6379（标准 Redis），教程 Docker 可能用 26379
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+FORCE_SAVE = os.getenv("REDIS_FORCE_SAVE", "0") == "1"
 
 
 def _check_redis():
@@ -47,6 +57,11 @@ _check_redis()
 
 # 原生 Redis 客户端，decode_responses=True 使返回值为 str 而非 bytes
 redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+logger.info(
+    "Redis 历史实现：{} | REDIS_URL={}",
+    "langchain-redis" if USE_LANGCHAIN_REDIS else "langchain-community（兼容回退）",
+    REDIS_URL,
+)
 
 llm = init_chat_model(
     model="qwen-plus",
@@ -59,8 +74,13 @@ prompt = ChatPromptTemplate.from_messages(
 )
 
 
-def get_session_history(session_id: str) -> RedisChatMessageHistory:
+def get_session_history(session_id: str) -> BaseChatMessageHistory:
     """为每个 session_id 创建/返回对应的 Redis 历史实例，实现持久化存储。"""
+    if USE_LANGCHAIN_REDIS:
+        return RedisChatMessageHistory(
+            session_id=session_id,
+            redis_url=REDIS_URL,
+        )
     return RedisChatMessageHistory(
         session_id=session_id,
         url=REDIS_URL,
@@ -82,8 +102,10 @@ while True:
         break
     response = chain.invoke({"question": question}, config)
     logger.info(f"AI回答:{response.content}")
-    # 可选：强制将 Redis 内存数据持久化到磁盘（等同 redis-cli SAVE）
-    redis_client.save()
+    # 可选：把 Redis 当前内存快照刷到磁盘，方便演示“Redis 重启后仍能恢复”。
+    # 这不是多轮记忆生效的必要条件，真实项目也不建议在每轮对话后都手动 SAVE。
+    if FORCE_SAVE:
+        redis_client.save()
 
 """
 【输出示例】
@@ -129,4 +151,3 @@ while True:
 # - 客户端能成功连接并通信。
 
 # ---
-

@@ -1,43 +1,50 @@
 """
-【案例】Redis 环境校验：确认 redis 包已安装且版本符合 LangChain 建议（如 5.3.1）
+【案例】Redis 环境校验：确认 redis 包已安装，且 Redis 服务可连通
 
 对应教程章节：第 16 章 - 记忆与对话历史 → 6、案例代码 → 6.2 持久化：Redis 存储 → 环境验证
 
 知识点速览：
-- 使用 RedisChatMessageHistory 前需安装 redis 包；LangChain 1.0+ 建议 pip install redis==5.3.1。
-- 本脚本仅做导入与版本打印，用于在跑 Redis 对话历史案例前确认环境正常；Redis 服务需单独启动（如 Docker: redis/redis-stack-server，端口 6379 或 26379）。
+- 使用 RedisChatMessageHistory 前，至少要先确认两件事：Python 能否导入 redis 包、当前 REDIS_URL 指向的 Redis 服务是否真的可达。
+- 默认按原生 Redis 地址 redis://localhost:6379 检查；如果你用的是 Redis Stack 的 Docker 映射端口（如 -p 26379:6379），可先设置环境变量 REDIS_URL=redis://localhost:26379。
+- 这个脚本不依赖 LangChain，本质上是在排查“Python 依赖”和“Redis 服务”这两个基础环境问题。
 """
 
-# 建议：pip install redis==5.3.1
+import os
 
-# 尝试导入 redis 包
-import redis
-
-# 验证包版本（无报错即为导入成功）
-print(redis.__version__)
-
-# 极简 redis 导入测试脚本
 try:
-    # 导入 redis 包
     import redis
-
-    print("✅ redis 包导入成功！")
-    print(f"✅ redis 包版本：{redis.__version__}")
 except ModuleNotFoundError:
-    print("❌ 未找到 redis 包，请先安装！")
-except Exception as e:
-    print(f"❌ redis 包导入异常：{e}")
+    print("❌ 未找到 redis 包，请先执行：pip install -r requirements.txt")
+    raise SystemExit(1)
 
-"""
-5.3.1
-✅ redis 包导入成功！
-✅ redis 包版本：5.3.1
-"""
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+
+print("✅ redis 包导入成功！")
+print(f"✅ redis 包版本：{redis.__version__}")
+print(f"正在连接 Redis：{REDIS_URL}")
+
+client = None
+try:
+    client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+    print(f"✅ Redis 连接成功，PING -> {client.ping()}")
+except (redis.ConnectionError, redis.TimeoutError, redis.ResponseError) as e:
+    print("❌ Redis 连接失败")
+    print(f"   REDIS_URL = {REDIS_URL}")
+    print(f"   错误信息 = {e}")
+    print("   如果你使用的是 Redis Stack 的 Docker 端口映射，可尝试：")
+    print("   export REDIS_URL=redis://localhost:26379")
+    raise SystemExit(1)
+except Exception as e:
+    print(f"❌ Redis 环境校验异常：{e}")
+    raise SystemExit(1)
+finally:
+    if client is not None:
+        client.close()
 
 """
 【输出示例】
-5.3.1
 ✅ redis 包导入成功！
 ✅ redis 包版本：5.3.1
+正在连接 Redis：redis://localhost:6379
+✅ Redis 连接成功，PING -> True
 """
-
