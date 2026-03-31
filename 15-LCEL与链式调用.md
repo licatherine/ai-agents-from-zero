@@ -4,13 +4,13 @@
 
 **本章课程目标：**
 
-- 理解 **Runnable** 的定位与「统一调用方式」的意义，掌握 **LCEL**（LangChain 表达式语言）及管道符 `|` 的用法。
-- 掌握 **Chain** 的典型结构（提示词模板 + 大模型 + 输出解析器），理解链本身也是 Runnable、可继续组合。
-- 能使用 **RunnableSequence**、**RunnableBranch**、**RunnableParallel**、**RunnableLambda** 等组合方式，会阅读并编写顺序链、分支链、串行链、并行链与函数链的示例代码。
+- 理解 **Runnable** 的定位，知道 LangChain 为什么要把 Prompt、Model、Parser、Tool、Chain 都抽象成统一的“可执行组件”。
+- 理解 **LCEL**（LangChain Expression Language，LangChain 表达式语言）到底解决了什么问题，掌握 `|` 管道符背后的链式组合思想。
+- 能读懂并运行本章全部案例：**顺序链、分支链、多步串行链、并行链、函数链**，建立后续学习 [记忆与对话历史](16-记忆与对话历史（含Redis基础）.md)、[Tools 工具调用](17-Tools工具调用.md)、[RAG](19-RAG检索增强生成.md)、[Agent](21-Agent智能体.md) 的基础。
 
-**前置知识建议：** 已学习 [第 9 章 LangChain 概述与架构](9-LangChain概述与架构.md)、[第 10 章 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)，了解 LangChain 的六大模块与基本调用方式；建议已学 [第 11 章 Model I/O](11-Model-I-O与模型接入.md)、[第 13 章 提示词与消息模板](13-提示词与消息模板.md)、[第 14 章 输出解析器](14-输出解析器.md)，便于理解「提示 → 模型 → 解析」在链中的位置。
+**前置知识建议：** 建议已经学习 [第 11 章 Model I/O](11-Model-I-O与模型接入.md)、[第 13 章 提示词与消息模板](13-提示词与消息模板.md)、[第 14 章 输出解析器](14-输出解析器.md)。因为 LCEL 最常见的一条链，正是把这三章的内容串成：**Prompt → Model → Parser**。
 
-**学习建议：** 先动手跑通一条 `prompt | model | parser` 顺序链，再依次尝试分支链、串行链、并行链与函数链；链式调用是后续 [第 16 章 记忆与对话历史](16-记忆与对话历史（含Redis基础）.md)、[第 17 章 Tools 工具调用](17-Tools工具调用.md) 以及 LangGraph 的基础。
+**学习建议：** 本章建议按 **“为什么要有 Runnable → LCEL 是什么 → 一条最基础的顺序链怎么写 → 再看分支、并行和自定义函数节点”** 的顺序学习。不要一开始就记很多类名，先把 `prompt | model | parser` 跑通，再理解为什么链本身也能继续参与组合。
 
 ---
 
@@ -18,263 +18,548 @@
 
 ### 1.1 前置知识点：抽象基类（ABC）
 
-若你第一次接触「抽象基类」，可先建立如下概念，便于理解 Runnable 的定位。
+如果你第一次接触 **抽象基类**，不用把它想得太复杂。对这一章来说，你只需要先建立一个足够实用的理解：
 
-- **是什么**：抽象基类是一种「只约定能做什么、不亲自实现具体怎么做」的类。它规定子类必须实现哪些方法（如 `invoke`、`stream`），但不（或只部分）实现这些方法的具体逻辑。
-- **为什么有用**：有了统一约定，代码可以「面向接口编程」——只要对象是某种抽象基类的子类，就可以放心调用约定好的方法，而不必关心它具体是提示模板、模型还是解析器。这样组件之间易于替换和组合。
-- **在 Python 中**：通过 `abc` 模块的 `ABC` 和 `@abstractmethod` 定义抽象基类；子类继承并实现所有抽象方法后，才能被正常实例化。
-- **在本章中**：**Runnable** 就是这样一个抽象基类；[Prompt 模板](13-提示词与消息模板.md)、[LLM](11-Model-I-O与模型接入.md)、[Output Parser](14-输出解析器.md)、以及用 `|` 拼出来的链，都是「实现了 Runnable 接口」的具体类型，因此都可以用同一套 `invoke`、`stream`、`batch` 等方式调用。
-- **LangChain 中常见的抽象基类**（均位于 `langchain_core`）：**Runnable**（可执行组件的统一接口，本章核心）；**BaseChatModel** / **BaseLLM**（[聊天模型](11-Model-I-O与模型接入.md)的基类）；**BasePromptTemplate**、**BaseChatPromptTemplate**（[提示词模板](13-提示词与消息模板.md)的基类）；**BaseOutputParser**（[输出解析器](14-输出解析器.md)的基类）。这些基类大多实现了 Runnable 接口，因此既能各自约定「模型该长什么样」「解析器该长什么样」，又能被 LCEL 用 `|` 统一组合。
+**抽象基类，就是先规定“这一类对象应该具备哪些共同能力”，但不急着规定“每个对象内部具体怎么做”。**
 
-### 1.2 什么是 Runnable
+你可以把它理解成一种“统一规则”或“公共协议”。
 
-**Runnable** 是 LangChain 中的**抽象基类**（定义在 `langchain_core.runnables`），为所有「可执行」的组件提供**统一的操作接口**。
+比如框架设计者先约定：
 
-- **定位**：LangChain 核心抽象接口，统一组件调用方式。
-- **目标**：无论组件是提示模板、模型、解析器还是整条链，都支持同一套方法（如 `invoke`、`stream`、`batch`），并支持 LCEL 组合。
-- **核心理念**：一切可执行的对象都应有统一的调用方式，从而具备「即插即用」的能力。
+- 只要你属于“可执行组件”
+- 你就应该支持某些统一方法
+- 例如单次调用、批量调用、流式调用、异步调用
 
-![Runnable 在 LangChain 中的定位：统一可执行组件的接口](images/15/15-1-2-1.jpeg)
+这样后面无论这个对象到底是 Prompt、Model、Parser，还是整条 Chain，使用者都可以先按同一种方式去理解和调用它。这就是抽象基类最有价值的地方：**先把共同规则定下来，再让不同对象去实现自己的具体行为。**
 
-> **说明**：上图为 Runnable 的定位示意。Prompt、Model、Parser、Chain 等只要实现 Runnable 接口，就可以用相同方式调用（如 `invoke`）并用管道符 `|` 组合成链。
+放到 LangChain 里，你可以把 **Runnable** 理解成这样一种核心抽象接口。它背后的思想就是：
 
-### 1.3 为什么需要统一调用方式
+- Prompt 是一种可执行组件
+- Model 是一种可执行组件
+- Parser 是一种可执行组件
+- Chain 也是一种可执行组件
 
-若没有统一接口，各组件调用方式不一致，组合时需要**手动记住并适配**每种组件的专属方法；使用 Runnable 之后，则**统一用 `invoke` 等一套方法**。下面按组件类型做「使用前 / 使用后」的对比，便于建立直观认识。
+既然它们都属于“可执行组件”这一大类，那么就应该尽量遵守同一套调用协议。所以这一节你不用死记 `ABC`、`abstractmethod` 这些 Python 细节，只要先抓住一句话：
 
-**1. 提示词模板（Prompt）**
+**抽象基类解决的是“先把共同规则定下来”，而 Runnable 正是 LangChain 用来统一这些规则的关键抽象。**
 
-- **使用前**：有的模板用 `.format(**variables)` 渲染，返回的是普通字符串，你要自己区分「这是字符串」还是「消息列表」，再传给模型。
-- **使用后**：用 `prompt.invoke({"topic": "AI"})`，返回的是 LangChain 内部统一的「可传给模型」的格式（如 `PromptValue`），直接可以交给下一步。
+![`langchain_core.runnables.base` 中 Runnable 的类定义与职责说明：可 invoke/batch/stream 并支持组合 (images/15/15-1-1-1.jpeg)](images/15/15-1-1-1.jpeg)
 
-> **可以这样理解**：LangChain 里的 Prompt 模板（如 `ChatPromptTemplate`）本质上是 **Runnable 的子类**（或实现了 Runnable 接口）。所以它既有自己「业务层面」的方法（如 `.format()`），也具备 Runnable 抽象基类规定的**公共方法**（如 `.invoke()`、`.stream()`）。用 `invoke` 时走的是统一接口，返回 `PromptValue` 等标准类型，便于和模型、解析器用 `|` 串联；需要时仍可用 `format` 做简单渲染。模型、解析器、工具同理：都是 Runnable，既有各自专属方法，也统一支持 `invoke` 等。
+> **图意说明**：上图截自 LangChain 参考文档。`Runnable` 声明为 `class Runnable(ABC, Generic[Input, Output])`，描述的是“可被调用、批量处理、流式输出、变换与组合”的工作单元；`invoke`/`ainvoke`、`batch`/`abatch`、`stream`/`astream` 等成对出现，`astream_log` 还可流式透出部分中间结果。各方法均可传入 `config`（如标签、元数据）便于追踪与排障；输入/输出/config 的结构信息可通过 `input_schema`、`output_schema`、`config_schema` 等暴露给工具链与 IDE。
+
+### 1.2 为什么 LangChain 需要统一接口
+
+如果没有统一接口，Prompt、模型、解析器、工具、检索器往往会各自一套入口（例如 `format`、`generate`、`parse`、`run`、`stream` 等混用）。结果是：**组件难拼接、方法名难记、替换实现时调用处到处要改**，也很难把整条流程写成清晰的“从左到右”数据流。
+
+LangChain 的解决思路就是：**把这些“能接收输入并产生输出”的对象，尽量抽象成统一接口。**这个统一接口，就是 **Runnable**。
+
+### 1.3 定义
+
+**Runnable** 是 LangChain 中最核心的抽象之一，可以把它理解成：**一个“可执行的数据处理节点”接口。**
+
+这里要特别区分一个很容易混淆的点：
+
+- **Runnable 是什么**：它表示“这一类对象是可执行组件”，是一种统一抽象标准。
+- **统一调用方式是什么**：它是 Runnable 带来的结果，也就是这些组件都可以尽量用同一套方式去调用，比如 `invoke`、`batch`、`stream`。
+
+所以更准确地说，**Runnable 不是“统一调用方式”的翻译，而是“统一调用方式”背后的抽象基础。**
+
+只要某个对象实现了 Runnable 接口，它通常就能用统一方式来调用，比如： `invoke`、`batch`、`stream`、`ainvoke`、`abatch`、`astream`。
+
+在 LangChain 里，很多你已经学过的对象，本质上都可以看作 Runnable：
+
+- [Prompt 模板](13-提示词与消息模板.md)、[聊天模型](11-Model-I-O与模型接入.md)、[输出解析器](14-输出解析器.md)
+- 后面会学到的检索器、工具、甚至整条链
+- 更进一步，编译后的 LangGraph 图本身也可以作为 Runnable 被调用
+
+也就是说，后面之所以能把这些组件顺畅地串成一条链，并不是因为“管道符很神奇”，而是：**这些组件本身都被设计成了可组合的 Runnable。**
+
+### 1.4 为什么需要统一调用方式
+
+这一点非常重要，因为它直接决定了后面“链式组合”为什么能成立、为什么会好用。
+
+先看你已经学过的三个典型对象：
+
+**1. Prompt 模板**
+
+- 从业务角度看，Prompt 模板最常见的方法是 `format(...)`
+- 但从“统一接口、便于后续组合”的角度看，它也可以用 `invoke(...)`
 
 ```python
-# 使用前：写法不统一，且返回类型各异
-msg = prompt.format(topic="AI")           # 或 prompt.invoke(...)，依实现而定
+# 业务层面常见写法
+prompt_str = prompt.format(topic="LangChain")
 
-# 使用后：统一用 invoke，返回类型一致，便于串联
-prompt_value = prompt.invoke({"topic": "AI"})
+# LCEL 统一接口写法
+prompt_value = prompt.invoke({"topic": "LangChain"})
 ```
 
-**2. 模型（LLM / Chat Model）**
+**2. 模型**
 
-- **使用前**：有的封装用 `model.generate(...)`，有的用 `model(...)`，入参可能是字符串或消息列表，需要按各库文档分别查。
-- **使用后**：一律 `model.invoke(输入)`，输入可以是上一步的 `PromptValue` 或消息列表，输出是统一的 `AIMessage` 等，便于交给解析器。
+- 从业务角度看，模型最常见的是 `invoke(...)`
+- 它接收上一步 Prompt 的输出，再返回 `AIMessage`
 
 ```python
-# 使用前：不同库/封装调用方式不一
-response = model.generate(prompt_value)   # 或 model(prompt_value)，因实现而异
-
-# 使用后：统一入口
 ai_message = model.invoke(prompt_value)
 ```
 
-**3. 输出解析器（Output Parser）**
+**3. 解析器**
 
-- **使用前**：解析器常用 `.parse(text)` 或 `.parse_with_prompt(...)`，你要从模型返回对象里先取出「文本」再传进去，链式组合时要手写中间步骤。
-- **使用后**：直接用 `parser.invoke(ai_message)`，解析器会从消息里取内容并解析，和上一步的 `AIMessage` 无缝衔接。
+- 从业务角度看，解析器常见有 `parse(...)`
+- 但在 LCEL 里也可以统一通过 `invoke(...)` 接收上一步结果
 
 ```python
-# 使用前：先取文本再解析，接口不统一
-text = ai_message.content
-result = parser.parse(text)
-
-# 使用后：一步到位，入参即上一步输出
 result = parser.invoke(ai_message)
 ```
 
-**4. 工具（Tool）**
-
-- **使用前**：工具常见 `.run(input)` 或 `.invoke(input)`，和「链」的写法不一致，接到链里要单独写一层适配。
-- **使用后**：工具也实现 Runnable，用 `tool.invoke(input)`，和 prompt、model、parser 用法一致，可直接用 `|` 参与组合。工具定义与 [Agent](21-Agent智能体.md) 用法见 [第 17 章](17-Tools工具调用.md)。
+这样一来，三步就被统一成了同一种风格：
 
 ```python
-# 使用前：可能是 .run()，和链的 invoke 不统一
-output = some_tool.run("查询天气")
-
-# 使用后：与链上其他组件一致
-output = some_tool.invoke("查询天气")
+prompt_value = prompt.invoke({"question": "什么是 LangChain？"})
+ai_message = model.invoke(prompt_value)
+result = parser.invoke(ai_message)
 ```
 
-**小结**：使用 Runnable 之后，所有组件都通过 **invoke**（以及 stream、batch 等）调用，例如：
+这背后最大的价值是：
 
-```python
-prompt_value = prompt.invoke({"topic": "AI"})
-ai_message  = model.invoke(prompt_value)
-result      = parser.invoke(ai_message)
-chain.invoke({"question": "你好"})   # 整条链同样用 invoke
-```
+- **组件之间更容易替换**
+- **流程更容易串联**
+- **链本身也可以继续被当作一个组件使用**
+- **中间结果传递方式更统一，不需要每一步都手写很多适配代码**
 
-本质是：**接口统一让组件具备了「即插即用」的能力**，便于用管道符 `|` 串联和替换，而不必再记「提示词用 format、解析器用 parse、工具用 run」等差异。
+这就是后面 `prompt | model | parser` 能成立的根本原因。
 
-### 1.4 Runnable 接口与核心方法
+### 1.5 常用方法
 
-实现 **Runnable** 接口的对象表示「可以执行的数据流节点」，既可以是**单个组件**，也可以是**整条链**或**复合结构**。具体包括：
+实现了 Runnable 接口的对象，通常都支持下面这些核心方法：
 
-- **单个组件**：如 [Prompt 模板](13-提示词与消息模板.md)、[Model](11-Model-I-O与模型接入.md)、[Output Parser](14-输出解析器.md)
-- **顺序流程**：如 prompt → model → parser 串联而成的一条链（即 [第 13 章](13-提示词与消息模板.md) + [第 11 章](11-Model-I-O与模型接入.md) + [第 14 章](14-输出解析器.md) 的组合）
-- **复合结构**：并行、多路、多输入多输出的组合（如 RunnableParallel、RunnableBranch）
+| 方法               | 作用                       | 适合场景                   |
+| ------------------ | -------------------------- | -------------------------- |
+| `invoke(input)`    | 同步处理单个输入           | 最常用，单次调用           |
+| `batch(inputs)`    | 同步批量处理多个输入       | 批量任务、离线任务         |
+| `stream(input)`    | 同步流式处理               | 打字机输出、长文本生成     |
+| `ainvoke(input)`   | 异步处理单个输入           | 异步服务、高并发           |
+| `abatch(inputs)`   | 异步批量处理               | 异步批量任务               |
+| `astream(input)`   | 异步流式处理               | 异步聊天 UI、流式返回      |
+| `astream_log(...)` | 流式输出并可选带上中间步骤 | 调试链、观察多节点执行过程 |
 
-只要实现了 Runnable 接口，就可以像函数一样用 **invoke()** 调用，或用管道符 **|** 与其他 Runnable 组合成新链。
+可以把它们理解成：
 
-**Runnable 接口中定义的常用方法如下：**
+- `invoke` 是最基础的“执行一次”
+- 其他方法是在同步 / 异步、单条 / 批量、一次性 / 流式这几个维度上的扩展
 
-- <strong>invoke(input)</strong>：同步执行，处理单个输入；最常用，适用于交互式或单次调用。
-- <strong>batch(inputs)</strong>：批量执行，一次处理多个输入；适用于批量任务，提升吞吐与效率。
-- <strong>stream(input)</strong>：流式执行，逐步返回结果；典型场景为大模型逐字/逐 token 输出，需实时展示生成内容时使用。
-- <strong>ainvoke(input)</strong>：异步执行，处理单个输入；用于高并发、非阻塞 I/O 场景。
+所以当你看到“Prompt、Model、Parser、Chain 都支持 invoke”时，不要把它理解成“它们完全一样”，而要理解成：**它们不同，但都遵守同一套调用协议。**
 
-此外还有 <strong>astream(input)</strong>（异步流式）、<strong>abatch(inputs)</strong>（异步批量）等变体，与上述方法语义一致，仅改为异步调用，便于在 asyncio 或高并发框架中与其他异步逻辑配合使用。
+### 1.6 在实际项目中的价值
+
+这一点在小案例里不一定立刻感受到，但在实际项目中非常重要。比如一个典型企业问答系统，可能会经历这样的演进：
+
+1. 一开始只是 `prompt + model`
+2. 后来为了稳定输出，加上 `parser`
+3. 再后来要分中文和英文回答，加上 `branch`
+4. 再后来要同时返回摘要与原文观点，加上 `parallel`
+5. 再后来要插入自定义日志、埋点、字段映射，又加上 `lambda`
+
+如果没有 Runnable 这层统一抽象，每增加一步，代码都要改很多地方；而在 LCEL 下，这些变化更像“往链上加节点”。这也是为什么 LangChain 的链式调用会让人觉得“像拼积木”。
+
+也正因为这种统一性，后面你会发现检索器、工具、记忆模块甚至 LangGraph 节点，理解起来都会更顺。很多更复杂的高级能力，本质上都是在 Runnable 这层统一抽象之上继续往上搭。
 
 ---
 
-## 2、LCEL 是什么
+## 2、LCEL 简介
 
-### 2.1 定义与一句话
+### 2.1 定义
 
-<strong>LCEL</strong>（LangChain Expression Language，LangChain 表达式语言）是专门用于<strong>组合 Runnable 组件</strong>的声明式语法，其<strong>核心操作符是管道符 `|`</strong>。
+**LCEL** 是 **LangChain Expression Language** 的缩写，中文通常叫 **LangChain 表达式语言**。它的作用很直接：**用一种声明式、可组合的方式，把多个 Runnable 连接起来。**
 
-**一句话**：通过 LCEL（管道符 `|`、RunnableSequence、RunnableParallel 等）快速将多个 Runnable 拼接成复杂工作流，支持顺序、条件分支、并行执行等。
-
-**典型写法示例**：
+最经典的 LCEL 写法就是：
 
 ```python
-chain = prompt | model | output_parser
+chain = prompt | model | parser
 result = chain.invoke({"question": "什么是 LangChain？"})
 ```
 
-核心思想：用 `|` 把多个 Runnable 像拼积木一样组合起来，数据从左到右依次流过。
+所以你可以先把 LCEL 理解成：**“用 `|（管道符）` 或其他组合方式，把多个 Runnable 连接起来的一套表达方法。”**
 
-### 2.2 可组合性
+但更准确地说，LCEL 不只是“把对象连起来”，它还在帮我们做两件事：
 
-LCEL 强调**可组合性**：将多个组件按特定顺序或分支组合成一条「链」（Pipeline），以完成复杂任务。链本身也是 Runnable，可以继续被组合。
+- 把前一步输出自动传给后一步
+- 尽量减少不同节点之间手写适配的样板代码
+
+### 2.2 LCEL 不只是语法糖
+
+很多初学者第一次看到 `prompt | model | parser`，会觉得它只是“写起来更短”。但 LCEL 的价值远不止省代码。
+
+它真正带来的好处有三层：
+
+**1. 表达更清晰**
+
+传统写法：
+
+```python
+prompt_value = prompt.invoke({"question": "什么是 LangChain？"})
+ai_message = model.invoke(prompt_value)
+result = parser.invoke(ai_message)
+```
+
+LCEL 写法：
+
+```python
+chain = prompt | model | parser
+result = chain.invoke({"question": "什么是 LangChain？"})
+```
+
+第二种写法更像在表达“流程本身”，而不是只是在堆代码。
+
+**2. 更容易组合**
+
+- 用 LCEL 连接出来的结果，本身还可以继续参与组合：
+
+- 一条顺序链可以放进分支链
+- 一条顺序链可以放进并行链
+- 并行链的输出还可以继续交给下一步处理
+
+而且在很多常见场景里，LCEL 还会帮我们自动处理“前一步结果如何传给下一步”这类重复性工作。只有当前后节点的输入输出结构不匹配时，我们才需要自己插入 `lambda` 或 `RunnableLambda` 做一次映射。
+
+**3. 统一支持同步、异步、批量、流式**
+
+根据 LangChain 官方参考，`RunnableSequence` 和 `RunnableParallel` 这类组合结构，会自动继承 Runnable 的同步、异步、批量、流式能力。这意味着你不只是得到了一条“可读的链”，还得到了一条“可统一执行的链”。
+
+### 2.3 LCEL 的核心组合思想
+
+对初学者来说，本章最重要的不是死记类名，而是理解 LCEL 背后的几种核心组合思想：
+
+- **顺序组合**：前一步输出作为下一步输入
+- **条件路由**：根据输入选择不同链
+- **并行组合**：同一输入同时喂给多条链
+
+补充一个很重要的认识：
+
+- **RunnableSequence** 和 **RunnableParallel** 是两种最核心的组合原语
+- 很多其他 Runnable 结构，本质上都可以理解成在这两种基础组合能力上的扩展或变体
+
+而 `RunnableLambda` 则相当于在组合过程中插入一段你自己的 Python 逻辑，让你可以做：
+
+- 中间结果调试
+- 输入结构映射
+- 输出结果整理
+- 简单业务判断
+
+也就是说，LCEL 的本质并不是“多了几个类”，而是：**LangChain 开始让你用“数据流编排”的方式思考 LLM 应用。**
+
+### 2.4 LCEL 和 Chain 的关系
+
+这一点特别容易混淆，所以单独强调一下：
+
+- **LCEL 是什么**：它是构建流程的一种表达方式，重点在“怎么写”。
+- **Chain 是什么**：它是通过 LCEL 或其他组合方式构建出来的可执行流程，重点在“最后得到了什么”。
+
+所以可以先用一句最容易记的话来理解：**LCEL 是构建链的方法，Chain 是构建出来的流程。**
 
 ---
 
 ## 3、Chain 结构
 
-- 使用 LCEL 创建的 Runnable 我们称为**「链」（Chain）**；链本身也是 Runnable，可以继续用 `|` 或 RunnableParallel 等组合。
-- **Chain 的典型结构**由三部分组成：
-  1. **[提示词模板](13-提示词与消息模板.md)**（Prompt）
-  2. **[大模型](11-Model-I-O与模型接入.md)**（LLM / Chat Model）
-  3. **[结果结构化解析器](14-输出解析器.md)**（Output Parser，可选）
+### 3.1 定义
 
-**管道运算符 `|`** 是 LCEL 最具特色的语法：多个 Runnable 通过 `|` 串联，形成清晰的数据处理链。典型链在代码中写出来就是 **`prompt | model | parser`**：从左到右依次是提示词模板、管道符、模型、管道符、解析器；数据流为「用户输入 → 经 Prompt 渲染 → 交给 Model → 模型输出 → 经 Parser 解析 → 得到最终结构化结果」。
+在 LangChain 语境里，**Chain（链）** 可以简单理解成：**把多个 Runnable 按某种规则组合起来后，形成的一段可执行流程。**
+
+这段流程可以很简单，也可以很复杂：
+
+- 简单时，就是 `prompt | model`
+- 常见时，是 `prompt | model | parser`
+- 复杂时，可能是分支 + 并行 + 自定义函数节点混合组成的流程
+
+最关键的一点是：**链本身也是 Runnable。**
+
+这意味着链不会成为“终点对象”，它依然可以继续被组合。比如：
+
+- 一条顺序链可以作为 `RunnableBranch` 的分支
+- 一条顺序链可以放进 `RunnableParallel`
+- 并行结果还可以继续交给后面的节点处理
+
+### 3.2 典型结构
+
+这一节开始，我们不再重点讨论“怎么写链”，而是看“链通常长什么样”。这一章和前面三章的关系非常紧密。
+
+如果把 [第 13 章](13-提示词与消息模板.md)、[第 11 章](11-Model-I-O与模型接入.md)、[第 14 章](14-输出解析器.md) 放在一起看，你会发现最典型的一条链就是：
+
+1. **Prompt**：组织输入
+2. **Model**：调用模型生成结果
+3. **Parser**：把结果解析成业务更容易使用的形式
+
+也就是：
+
+```python
+chain = prompt | model | parser
+```
+
+这条链不是偶然写法，而是 LangChain 里最经典、最基础的组合方式。
 
 ---
 
 ## 4、链式调用基础用法与案例
 
-下面按类型介绍几种常用链的用法，并给出对应案例源码路径与核心代码说明。
+### 4.0 几种链的选择与对比
 
-### 4.0 几种链的对比与如何选择
+| 类型           | 典型写法 / 类名                                | 执行方式               | 输入 → 输出     | 典型场景                     |
+| -------------- | ---------------------------------------------- | ---------------------- | --------------- | ---------------------------- |
+| **顺序链**     | `prompt ｜ model ｜ parser`/`RunnableSequence` | 一步接一步执行         | 单输入 → 单输出 | 最基础的问答、抽取、摘要     |
+| **分支链**     | `RunnableBranch(...)`                          | 按条件只走其中一条子链 | 单输入 → 单输出 | 意图路由、多语言路由         |
+| **多步串行链** | 多条子链继续用 `｜` 串联                       | 前一步结果给后一步     | 单输入 → 单输出 | 先总结再翻译、先整理再生成   |
+| **并行链**     | `RunnableParallel({...})`                      | 多条子链同时执行       | 单输入 → 多输出 | 中英文同时生成、多模型并跑   |
+| **函数链**     | `RunnableLambda(func)`                         | 在链中插入 Python 函数 | 取决于函数      | 字段映射、调试、轻量业务逻辑 |
 
-| 类型       | 典型写法 / 类名                                      | 执行方式                             | 输入 → 输出                            | 典型场景                                                        |
-| ---------- | ---------------------------------------------------- | ------------------------------------ | -------------------------------------- | --------------------------------------------------------------- |
-| **顺序链** | `prompt \| model \| parser`（RunnableSequence）      | 一步接一步，前一步输出作为下一步输入 | 单输入 → 单输出                        | 单轮问答、一次「提示 → 模型 → 解析」的完整流程                  |
-| **分支链** | `RunnableBranch((条件1, 链1), (条件2, 链2), 默认链)` | 按条件只走其中一条子链               | 单输入 → 单输出（来自被选中的那一支）  | 多语言/多策略路由（如按「日语」「韩语」选不同翻译链）、意图分流 |
-| **串行链** | 多条子链用 `\|` 或 lambda 串联                       | 多步顺序执行，每一步可再次调用模型   | 单输入 → 单输出（最后一步的结果）      | 多轮模型调用（如先总结再翻译、先检索再生成）                    |
-| **并行链** | `RunnableParallel({"key1": 链1, "key2": 链2})`       | 多条子链同时跑，结果汇总为 dict      | 单输入 → 多输出（按 key 聚合）         | 同一问题多语言/多模型并行、多路推理或评估                       |
-| **函数链** | `RunnableLambda(函数)` 或函数直接参与 `\|`           | 在链中插入自定义 Python 逻辑         | 取决于函数（常做格式转换、打印、过滤） | 中间结果处理、日志、字段映射、简单条件判断                      |
+如果你现在只想快速建立直觉，可以这样选：
 
-**如何选择：**
-
-- **只有一条直线流程**（提示 → 模型 → 解析，无分支、无并行）→ 用 **顺序链**（`prompt | model | parser`）。
-- **需要根据输入走不同子链**（如按语言/意图选不同提示或模型）→ 用 **分支链**（RunnableBranch）。
-- **需要多步依次调用模型**（如先 A 再 B，B 依赖 A 的输出）→ 用 **串行链**（多段 `|` 或 lambda 串联）。
-- **同一输入要同时跑多条链并汇总**（如中英文各答一遍、多模型投票）→ 用 **并行链**（RunnableParallel）。
-- **链中要插入自定义逻辑**（转换格式、打日志、简单计算）→ 用 **函数链**（RunnableLambda 或可调用对象）。
-
-**使用场景速览：**
-
-- **顺序链**：单轮 QA、表单解析、一次性的「用户输入 → 模型 → 结构化输出」。
-- **分支链**：多语言翻译路由、客服意图分流（咨询/投诉/转人工）、按主题选不同 prompt 或模型。
-- **串行链**：先检索再生成（[RAG](19-RAG检索增强生成.md) 简化版）、先总结再翻译、多步推理链。
-- **并行链**：同一问题中英双答、多模型并行取最优或投票、多路检索结果合并。
-- **函数链**：在链中做字段重命名、过滤无效输出、打印调试、把上一步输出转成下一步需要的 dict 结构。
+- **只有一条直线流程**：先用顺序链
+- **要按条件切换不同流程**：用分支链
+- **要把多个模型调用前后串起来**：用多步串行链
+- **要同一输入同时跑多条链**：用并行链
+- **要插入自定义 Python 逻辑**：用函数链
 
 ---
 
 ### 4.1 RunnableSequence（顺序链）
 
-**顺序链**即最常见的「Prompt → Model → Parser」一条线执行，数据依次经过每个节点。
+`RunnableSequence` 是最常见、也最重要的链类型之一。LangChain 官方参考里明确说明，它几乎出现在所有基础链式流程中。
 
-**RunnableSequence**（可运行序列）按顺序「链接」多个可运行对象：前一个对象的输出作为后一个对象的输入。LCEL 重载了管道符 **`|`**，用两个 Runnable 即可创建 RunnableSequence，因此下面两种写法等价：
+它的核心规则很简单：**前一个 Runnable 的输出，直接作为后一个 Runnable 的输入。**
 
-- 使用管道符：`chain = runnable1 | runnable2`
-- 使用显式构造函数：`chain = RunnableSequence([runnable1, runnable2])`
+所以：
 
-在典型顺序链中即为：`chain = prompt | model | parser`，对应「提示模板 → 模型 → 输出解析器」的数据流。
+```python
+chain = prompt | model | parser
+```
+
+本质上就是一个 `RunnableSequence`。
+
+你也可以显式写成：
+
+```python
+from langchain_core.runnables import RunnableSequence
+
+chain = RunnableSequence(first=prompt, middle=[model], last=parser)
+```
+
+但在实际开发中，更常见、更推荐的仍然是管道符写法，因为可读性更好。
+
+这类链最典型的场景，就是把前面几章的核心内容一次性串起来：
+
+- Prompt 组织输入
+- Model 调用模型
+- Parser 把输出转成字符串或结构化结果
 
 【案例源码】`案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableSequenceDemo.py`
 
 [LCEL_RunnableSequenceDemo.py](案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableSequenceDemo.py ":include :type=code")
 
----
+这个案例非常值得你重点吃透，因为它不仅演示了“分步执行”，也演示了“直接把三步写成一条链再一次 invoke”。这正是 LCEL 的核心体验。
 
 ### 4.2 RunnableBranch（分支链）
 
-**RunnableBranch** 实现**条件分支**：根据输入决定走哪一条子链，类似 if-else if-else。
+如果顺序链解决的是“按顺序做”，那么 `RunnableBranch` 解决的就是：**根据输入内容，决定走哪条链。**
 
-- 初始化时传入若干 `(条件, Runnable)` 对和一个**默认分支**。
-- 执行时对输入依次求值条件，**第一个为 True 的条件**对应的 Runnable 会在该输入上运行；若无一为 True，则运行默认分支。
+它很像编程里的 `if / elif / else`，只是现在被放进了 Runnable 体系中。典型结构是：
 
-典型用法：根据用户输入中的关键词（如「日语」「韩语」）选择不同翻译提示词与子链。
+```python
+RunnableBranch(
+    (条件1, 链1),
+    (条件2, 链2),
+    默认链,
+)
+```
+
+执行时会依次判断条件：
+
+- 第一个命中的条件对应的链会被执行
+- 如果都不命中，就走默认链
+
+这在项目里非常常见，比如：
+
+- 根据语言选择不同翻译链
+- 根据用户意图选择不同客服流程
+- 根据问题类型选择不同 Prompt 或模型
+
+本章配套案例就是一个非常典型的“语言路由”例子：
+
+- 输入里有“日语”关键词，走日语翻译链
+- 输入里有“韩语”关键词，走韩语翻译链
+- 否则默认走英语翻译链
 
 【案例源码】`案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableBranchDemo.py`
 
 [LCEL_RunnableBranchDemo.py](案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableBranchDemo.py ":include :type=code")
 
----
+这个案例和实际项目非常贴近，因为很多真实业务并不是“所有请求走同一条链”，而是“先判断，再分流”。
 
-### 4.3 RunnableSerializable / 串行链（多步串联）
+### 4.3 Multi-Step Chain（多步串行链）
 
-当需要**多次调用大模型**、把多个步骤串联起来时，可以把多条子链用 `|` 或 lambda 串成一条「串行链」：前一步的输出作为后一步的输入。
+这一节要学的重点是：**如何把多条子链首尾串起来，形成多步串行流程。**
 
-例如：先让模型用中文介绍某主题，再把该介绍作为输入交给另一条链翻译成英文。
+比如这个案例做的事是：
 
-【案例源码】`案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableSerializableDemo.py`
+1. 先让模型用中文介绍某个主题
+2. 再把第一步结果转换成第二步所需的输入结构
+3. 最后再交给另一条链翻译成英文
 
-[LCEL_RunnableSerializableDemo.py](案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableSerializableDemo.py ":include :type=code")
+也就是一种非常典型的“多步加工”：
 
----
+- 第一步不是最终结果
+- 第二步依赖第一步结果
+- 中间还可能需要做一次结构映射
+
+这类串行链在项目里特别常见，比如：
+
+- 先摘要，再翻译
+- 先提取要点，再生成报告
+- 先检索，再重写，再结构化
+
+【案例源码】`案例与源码-2-LangChain框架/06-lcel/LCEL_MultiStepChainDemo.py`
+
+[LCEL_MultiStepChainDemo.py](案例与源码-2-LangChain框架/06-lcel/LCEL_MultiStepChainDemo.py ":include :type=code")
+
+这个案例里最值得你注意的点，不是文件名，而是中间这个映射动作：
+
+```python
+(lambda content: {"input": content})
+```
+
+它说明一个很重要的现实问题：**前后两步的输入输出结构，不一定天然匹配。**这也是为什么函数节点和 RunnableLambda 在 LCEL 中很重要。
 
 ### 4.4 RunnableParallel（并行链）
 
-**并行链**指**同时运行多条子链**，待全部完成后汇总结果。
+`RunnableParallel` 解决的是另一个常见问题：**同一份输入，我想同时交给多条链处理。**
 
-适用场景举例：
+它的核心特点是：
 
-- 同一问题用中英文各答一遍并聚合
-- 多个模型同时跑同一问题取最优或综合
-- 多路径推理、多模态（如图片 + 文本）并行处理
+- 多条子链共享同一输入
+- 同时执行
+- 最后把结果按键汇总成一个 `dict`
+
+从执行机制上理解也很有帮助：
+
+- 同步执行时，LangChain 通常会并发调度这些子 Runnable
+- 异步执行时，思路上就是把多个异步任务一起等待后再汇总结果
+
+你不一定需要一开始就记住底层细节，但要知道：**并行链不是“写在一起”，而是真的在“同一输入下多路执行”。**
+
+例如：
+
+```python
+parallel_chain = RunnableParallel({
+    "chinese": chain1,
+    "english": chain2,
+})
+```
+
+除了显式使用 `RunnableParallel(...)`，LCEL 里还有一个非常实用的写法：**直接用字典表达并行结构**。例如：
+
+```python
+parallel_then_summary = {
+    "paragraph_1": chain1,
+    "paragraph_2": chain2,
+} | summary_chain
+```
+
+这段写法的含义是：
+
+1. 先并行运行 `chain1` 和 `chain2`
+2. 把结果汇总成一个字典
+3. 再把这个字典交给后面的 `summary_chain`
+
+这类写法在实际项目里很常见，因为很多业务并不是“并行完就结束”，而是“并行生成多个结果后，再统一分析或总结”。
+
+调用后返回结果可能像这样：
+
+```python
+{
+    "chinese": "...",
+    "english": "..."
+}
+```
+
+根据 LangChain 官方参考，`RunnableParallel` 是与 `RunnableSequence` 并列的另一个核心组合原语。
+
+这种链在实际项目里也非常常见：
+
+- 同一问题同时生成中英文答案
+- 同一问题同时走多个模型做对比
+- 同一份输入同时做多个维度分析
+
+你的案例就是一个很清晰的例子：
+
+- 一条子链用中文介绍 `LangChain`
+- 另一条子链用英文介绍 `LangChain`
+- 然后一次性返回两个结果
 
 【案例源码】`案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableParallelDemo.py`
 
 [LCEL_RunnableParallelDemo.py](案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableParallelDemo.py ":include :type=code")
 
-> **延伸**：并行链的图结构可配合 `get_graph().print_ascii()` 查看，为后续学习 LangGraph 做铺垫。
-
----
+这个案例还有一个很有价值的补充点：它调用了 `get_graph().print_ascii()`。这有助于你从“代码链”过渡到“图结构”的理解，为后续学习 LangGraph 做铺垫。
 
 ### 4.5 RunnableLambda（函数链）
 
-**RunnableLambda** 将**普通 Python 函数**包装成 Runnable，从而可以放入 LCEL 链中，与其他组件用 `|` 连接。
+`RunnableLambda` 的价值在于：**把普通 Python 函数也变成 Runnable。**
 
-- 作用：把自定义逻辑（如打印中间结果、数据格式转换）变成链中的一个节点。
-- 用法：用 `RunnableLambda(函数)` 或直接把函数放在 `|` 之间（LangChain 会自动包装）。
+这听起来像个小功能，但在实际开发里非常实用，因为链式流程经常会遇到这种情况：
+
+- 上一步输出结构不符合下一步输入要求
+- 想打印中间结果做调试
+- 想做一次字段重命名
+- 想插入一点简单业务逻辑
+
+如果没有函数节点，你就得把链拆开，在外面手写很多中间处理代码；有了 `RunnableLambda`，这些逻辑就能被放回链内部。
+
+例如：
+
+```python
+from langchain_core.runnables import RunnableLambda
+
+def debug_print(x):
+    print(x)
+    return {"input": x}
+
+chain = chain1 | RunnableLambda(debug_print) | chain2
+```
+
+LangChain 还支持一种更省事的写法：直接把函数放在 `|` 中间，框架会自动包装成 Runnable。
+
+本章配套案例也同时演示了两种写法：
+
+- `chain1 | debug_print | chain2`
+- `chain1 | RunnableLambda(debug_print) | chain2`
 
 【案例源码】`案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableLambdaDemo.py`
 
 [LCEL_RunnableLambdaDemo.py](案例与源码-2-LangChain框架/06-lcel/LCEL_RunnableLambdaDemo.py ":include :type=code")
 
+从项目角度看，RunnableLambda 很像“链里的胶水层”：
+
+- 不负责模型能力
+- 负责把前后节点粘起来
+
+如果前面的“多步串行链”让你感受到“为什么需要中间映射”，这一节就是在回答“中间映射应该怎么优雅地写进链里”。
+
+### 4.6 补充：其他常见 Runnable 结构
+
+除了本章重点展开的几种结构，LangChain 里还有一些在实际项目里很常见、但初学阶段不必深入的 Runnable 组件。
+
+| 名称                    | 作用                                                    | 什么时候会用到                               |
+| ----------------------- | ------------------------------------------------------- | -------------------------------------------- |
+| `RunnablePassthrough`   | 接收输入后原样透传，也可顺手往输出中补充字段            | 想保留原始输入、给结果加键、做轻量上下文拼装 |
+| `RunnableWithFallbacks` | 为某个 Runnable 配置兜底逻辑，失败后回退到备用 Runnable | 模型调用失败、主链失败后自动切备用方案       |
+| `RunnableBinding`       | 为 Runnable 预绑定 `config`、默认参数等                 | 同一链在不同环境复用、可配置温度与模型等     |
+
+你现在不一定要立刻掌握它们，但至少可以先建立印象： **Runnable 世界并不只有“顺序、分支、并行、lambda”这几种，LangChain 其实提供了一整套可执行节点家族。**
+
 ---
 
 **本章小结：**
 
-- **Runnable** 是 LangChain 中「可执行组件」的统一接口，通过 `invoke`、`stream`、`batch` 等方法调用；一切可执行对象具备统一调用方式，便于用管道符 `|` 串联和替换。
-- **LCEL**（LangChain 表达式语言）用管道符 `|` 将多个 Runnable 组合成链，支持顺序、分支、并行与函数节点；链本身也是 Runnable，可继续组合。
-- **Chain 典型结构**为「[提示词模板](13-提示词与消息模板.md) + [大模型](11-Model-I-O与模型接入.md) + [输出解析器](14-输出解析器.md)」；**顺序链**（RunnableSequence）、**分支链**（RunnableBranch）、**串行链**（多步 `|` 串联）、**并行链**（RunnableParallel）、**函数链**（RunnableLambda）是五种常见组合方式，可按业务选择或组合使用。
+- **Runnable** 是 LangChain 中统一的“可执行组件”抽象。Prompt、Model、Parser、Tool、Chain 之所以能被统一调用，是因为它们在 Runnable 这层被约束成了同一种接口风格。
+- **LCEL** 是把多个 Runnable 组合成链的表达式语言。它最核心的价值，不只是 `|` 写起来简洁，而是让流程变得声明式、可组合、可扩展。
+- **链的核心主线** 是前面几章内容的自然延伸：把 [提示词模板](13-提示词与消息模板.md)、[模型调用](11-Model-I-O与模型接入.md)、[输出解析器](14-输出解析器.md) 组织成一条可执行流程。
+- **五类常见链** 中，顺序链是基础，分支链解决路由问题，多步串行链解决前后步骤依赖问题，并行链解决多路同时处理问题，RunnableLambda 解决自定义逻辑如何优雅插入链的问题。
 
-**建议下一步：** 在本地依次运行顺序链、分支链、串行链、并行链与函数链案例，理解数据在链中的流向；接着学习 [第 16 章 记忆与对话历史](16-记忆与对话历史（含Redis基础）.md)，实现多轮连贯对话；再学 [第 17 章 Tools 工具调用](17-Tools工具调用.md)、[第 21 章 Agent 智能体](21-Agent智能体.md)，让链具备调用外部工具与自主决策能力。
+**建议下一步：** 先把本章 5 个案例都跑一遍，重点观察“每一步输入输出是什么、为什么能接上下一步”；然后继续学习 [第 16 章 记忆与对话历史](16-记忆与对话历史（含Redis基础）.md) 和 [第 17 章 Tools 工具调用](17-Tools工具调用.md)，你会更清楚链式调用如何进一步扩展成带状态、带工具、带决策能力的 LLM 应用。

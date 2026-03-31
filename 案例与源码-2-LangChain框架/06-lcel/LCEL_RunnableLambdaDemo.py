@@ -4,9 +4,9 @@
 对应教程章节：第 15 章 - LCEL 与链式调用 → 4.5 RunnableLambda（函数链）
 
 知识点速览：
-- RunnableLambda 将普通 Python 函数包装成 Runnable，从而可放在 LCEL 链中与 prompt、model、parser 等用 | 连接。
-- 作用：自定义逻辑（如打印中间结果、数据格式转换）作为链的一个节点；可用 RunnableLambda(函数) 或直接把函数写在 | 之间（LangChain 会自动包装）。
-- 函数的输入为上一步输出，返回值作为下一步输入，便于在链中插入调试或适配层。
+- `RunnableLambda` 的作用，是把普通 Python 函数变成 Runnable 节点，方便插入到 LCEL 链中。
+- 它特别适合做轻量逻辑，例如打印中间结果、字段映射、输入输出结构适配；如果逻辑已经很重，就不建议继续塞在函数链里。
+- 除了显式写 `RunnableLambda(函数)`，也可以直接把函数放在 `|` 之间，LangChain 会自动完成包装。
 """
 
 import os
@@ -31,7 +31,7 @@ model = init_chat_model(
 
 
 def debug_print(x):
-    """将上一步输出打印并转为 chain2 需要的 dict 格式 {"input": 文本}。"""
+    """打印中间结果，并把文本包装成 chain2 所需的 {"input": 文本} 结构。"""
     logger.info(f"中间结果:{x}")
     return {"input": x}
 

@@ -4,9 +4,9 @@
 对应教程章节：第 15 章 - LCEL 与链式调用 → 4.2 RunnableBranch（分支链）
 
 知识点速览：
-- RunnableBranch 实现条件分支：传入若干 (条件, Runnable) 对和一个默认分支；执行时对输入依次求值条件，第一个为 True 的对应子链运行。
-- 典型用法：根据用户输入中的关键词（如「日语」「韩语」）选择不同提示词与子链，实现多语言/多策略分支。
-- 每个分支本身可以是「prompt | model | parser」这样的顺序链，分支链只是在外层做路由。
+- `RunnableBranch` 解决的是“同一个输入，不一定走同一条链”的问题，本质上是 LCEL 里的路由层。
+- 传入若干 `(条件, Runnable)` 对和一个默认分支后，执行时会按顺序判断条件，命中的第一条分支会被执行；最后一个未成对的 Runnable 通常就是默认分支。
+- 每个分支内部仍然可以是 `prompt | model | parser` 这样的顺序链，所以分支链可以理解为“外层路由 + 内层子链”。
 """
 
 import os
@@ -57,7 +57,7 @@ model = init_chat_model(
 parser = StrOutputParser()
 
 # RunnableBranch( (条件1, 子链1), (条件2, 子链2), ..., 默认子链 )
-# 条件为可调用对象，接收输入 dict，返回 bool；第一个为 True 的分支会执行
+# 条件为可调用对象，接收输入 dict，返回 bool；第一个命中的分支会执行，最后一个参数是默认分支
 chain = RunnableBranch(
     (lambda x: determine_language(x) == "japanese", japanese_prompt | model | parser),
     (lambda x: determine_language(x) == "korean", korean_prompt | model | parser),
@@ -98,7 +98,6 @@ for query_input in test_queries:
 2026-03-06 10:15:54.493 | INFO     | __main__:<module>:90 - [system]: 你是一个韩语翻译专家，你叫小韩
 2026-03-06 10:15:54.493 | INFO     | __main__:<module>:90 - [human]: 请你用韩语翻译这句话:"见到你很高兴"
 2026-03-06 10:15:55.733 | INFO     | __main__:<module>:94 - 输出结果: 만나서 반갑습니다.
-"""
 
 # 2026-03-06 10:15:55.733 | INFO     | __main__:<module>:77 - 检测到语言类型: japanese
 # 2026-03-06 10:15:55.733 | INFO     | __main__:<module>:88 - 格式化后的提示词:
@@ -112,3 +111,4 @@ for query_input in test_queries:
 # 2026-03-06 10:15:56.552 | INFO     | __main__:<module>:90 - [human]: 请你用英语翻译这句话:"见到你很高兴"
 # 2026-03-06 10:15:57.031 | INFO     | __main__:<module>:94 - 输出结果: Nice to meet you.
 
+"""

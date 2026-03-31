@@ -1,12 +1,12 @@
 """
 【案例】串行链：多步串联，前一步输出作为后一步输入
 
-对应教程章节：第 15 章 - LCEL 与链式调用 → 4.3 RunnableSerializable / 串行链（多步串联）
+对应教程章节：第 15 章 - LCEL 与链式调用 → 4.3 多步串行链（Multi-Step Chain）
 
 知识点速览：
-- 当需要多次调用大模型、把多个步骤串联时，可用 | 或 lambda 将多条子链串成一条「串行链」。
-- 前一步的输出会作为后一步的输入；若后一步需要的入参键名与上一步输出不一致，可用 lambda 做映射（如把 content 转为 {"input": content}）。
-- 链本身是 Runnable，串起来后仍可用一次 invoke 完成多步调用。
+- 这个案例真正要学的是“多步串行链”：前一步不是最终答案，而是后一步的原材料。
+- 当多条子链首尾相接时，前一步输出会直接流向后一步；如果前后输入输出结构不匹配，就需要插入一次映射。
+- 这里用 `lambda` 把第一条子链输出的文本包装成 `{"input": 文本}`，本质上是在做“节点之间的数据适配”。
 """
 
 import os
@@ -47,7 +47,7 @@ prompt2 = ChatPromptTemplate.from_messages(
 parser2 = StrOutputParser()
 chain2 = prompt2 | model | parser2
 
-# 串行组合：chain1 输出 str，用 lambda 转为 {"input": content} 以匹配 chain2 的占位符
+# 串行组合：chain1 输出文本，用 lambda 转为 {"input": content}，以匹配 chain2 需要的输入结构
 full_chain = chain1 | (lambda content: {"input": content}) | chain2
 
 # 一次 invoke：先执行 chain1，再把结果作为 chain2 的 input

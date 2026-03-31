@@ -4,9 +4,9 @@
 对应教程章节：第 15 章 - LCEL 与链式调用 → 4.4 RunnableParallel（并行链）
 
 知识点速览：
-- 并行链同时运行多条子链，待全部完成后汇总结果；使用 RunnableParallel({ "键名": runnable, ... }) 定义。
-- 适用场景：同一问题用中/英文各答一遍并聚合、多模型并行、多路径推理等。
-- invoke 的返回值为 dict，键为 RunnableParallel 的键名，值为对应子链的输出；可用 get_graph().print_ascii() 查看图结构（为 LangGraph 铺垫）。
+- `RunnableParallel` 解决的是“同一输入，要同时跑多条子链”的问题。
+- 结果会以 `dict` 形式汇总返回，键名对应并行结构里的键，值对应每条子链的输出。
+- 除了显式写 `RunnableParallel({...})`，LCEL 里也常直接用字典表达并行结构；并行完成后，还可以继续把这个字典交给后续链做总结或比较。
 """
 
 import os
@@ -48,14 +48,14 @@ prompt2 = ChatPromptTemplate.from_messages(
 parser2 = StrOutputParser()
 chain2 = prompt2 | model | parser2
 
-# RunnableParallel：同一输入会同时喂给多个子链，结果汇总为 dict
+# RunnableParallel：同一输入会同时喂给多个子链，结果按键汇总为 dict
 parallel_chain = RunnableParallel({"chinese": chain1, "english": chain2})
 
 # 一次 invoke，返回 {"chinese": "...", "english": "..."}
 result = parallel_chain.invoke({"topic": "langchain"})
 logger.info(result)
 
-# 可选：打印并行链的 ASCII 图结构，便于理解数据流与后续学习 LangGraph
+# 可选：打印并行链的 ASCII 图结构，便于理解“并行节点 + 汇总输出”的数据流
 parallel_chain.get_graph().print_ascii()
 
 """
