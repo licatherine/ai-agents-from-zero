@@ -1,16 +1,15 @@
 """
 【案例】add_messages Reducer：消息列表专用，节点只返回「增量消息」，由 add_messages 自动追加到 state["messages"]，适合多轮对话与多节点共同写消息的场景。
 
-对应教程章节：第 23 章 - LangGraph API：图与状态 → 2、Graph API 之 State（状态）
+对应教程章节：第 23 章 - LangGraph API：图与状态 → 3、State 的更新机制：Reducer（规约函数）
 
 知识点速览：
 - Annotated[List, add_messages] 表示该字段使用 add_messages 规约：新消息追加到列表末尾，而非覆盖。
 - 节点返回格式可为 [("role", content)] 或 [AIMessage/HumanMessage] 等，由 add_messages 统一合并。
-- 多节点并行写 messages 时，各节点返回的列表会按执行顺序合并，避免整份替换导致丢消息。
+- 多节点共同写 messages 时，本例重点是“消息按 add_messages 规则合并”，不要把并行分支下的最终顺序直接当成业务契约。
 """
 
 from typing import Annotated, List
-from langchain_core.messages import HumanMessage, AIMessage
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages

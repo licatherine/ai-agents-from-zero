@@ -1,12 +1,12 @@
 """
 【案例】operator.mul 作为 Reducer（数值相乘）的「陷阱」演示：LangGraph 会用类型默认值（float 的 0.0）先做一次规约，导致 0.0 * 初始值 = 0，后续乘法始终为 0；理解后可用自定义 Reducer 解决。
 
-对应教程章节：第 23 章 - LangGraph API：图与状态 → 2、Graph API 之 State（状态）
+对应教程章节：第 23 章 - LangGraph API：图与状态 → 3、State 的更新机制：Reducer（规约函数）
 
 知识点速览：
-- 未指定 Reducer 时，LangGraph 会先用「类型默认值」与 invoke 传入的初始值做一次规约。加法恒等元是 0，乘法恒等元是 1，但 float 默认值是 0.0，导致乘法第一次就变成 0。
-- operator.mul 作为 Reducer 时：第一次规约为 0.0 * 初始值 = 0.0，之后所有节点乘上去仍是 0。这是设计使然，不是 bug。
-- 解决方式：对该字段使用自定义 Reducer，在函数内判断「若 current == 0.0 则视为第一次，用 1.0 * update」再返回。参见 StateReducer_Custom.py。
+- 这个案例的重点不是“operator.mul 不能跑”，而是理解“乘法这类对初始值很敏感的规约逻辑，不能只看 reducer 函数名，还要看首次合并边界”。
+- 当字段默认值是 `0.0` 时，乘法规约很容易在第一次合并就变成 `0.0`，后面再乘什么都还是 `0.0`。
+- 解决方式通常是改成自定义 Reducer，在函数里显式处理首次合并逻辑。参见 `StateReducer_Custom.py`。
 """
 
 import operator
@@ -23,31 +23,7 @@ def multiplier(state: MultiplyState) -> dict:
     return {"factor": 2.0}
 
 
-"""
-这不是bug，是设计决策：LangGraph选择用类型默认值初始化状态字段
-对于不同操作，需要不同处理：
-加法：恒等元是0.0，所以operator.add可以直接用
-乘法：恒等元是1.0，需要特殊处理初始的0.0
-自定义reducer是标准做法：复杂的业务逻辑都应该使用自定义reducer
-
-这是LangGraph使用中的一个常见陷阱！建议在使用乘法、除法等非加法操作时，总是使用自定义reducer来处理初始值问题
-
-    在执行初始阶段（我们定义的第一个node前），会默认调用一次reducer（后面自定义reducer案例中进行了打印验证），
-    用默认值与invoke传递的值进行计算：
-    此案例中，invoke中传递了一个默认值5.0，由于会默认调用一次reducer，
-    执行的计算是： 0.0（float默认值） * 5.0(invoke传递的初始值) = 0.0
-    导致后续乘法结果一直都是0
-
-    初始默认值: factor = 0.0
-    invoke传入: factor = 5.0
-    reducer计算: 0.0 * 5.0 = 0.0
-    然后才执行你的multiplier节点...
-operator.mul作为 LangGraph 归约器的执行逻辑是：
-最终值 = 初始值 * 增量值1 * 增量值2 * ...
-归约器会迭代节点返回的增量值并依次相乘，若直接返回单个数值（非可迭代），会被判定为「无增量」，最终按初始值 * 空处理，而乘法中「空累积」的默认结果是乘法单位元 0.0。
-
-    解决方案： 使用自定义reducer
-"""
+# 这里故意保留 operator.mul 的“踩坑版”写法，目的是先让你观察问题，再对照 StateReducer_Custom.py 理解为什么真实项目更适合写自定义 Reducer
 
 
 def run_demo():

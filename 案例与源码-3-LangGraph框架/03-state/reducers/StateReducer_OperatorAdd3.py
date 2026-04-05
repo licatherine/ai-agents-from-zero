@@ -1,7 +1,7 @@
 """
 【案例】operator.add 作为 Reducer（数值）：对数值字段做「累加」，多节点返回的数会与当前值相加，适合计数、积分等场景。
 
-对应教程章节：第 23 章 - LangGraph API：图与状态 → 2、Graph API 之 State（状态）
+对应教程章节：第 23 章 - LangGraph API：图与状态 → 3、State 的更新机制：Reducer（规约函数）
 
 知识点速览：
 - Annotated[int, operator.add] 表示该字段用 operator.add 规约：语义为数值加法，即 current + update。

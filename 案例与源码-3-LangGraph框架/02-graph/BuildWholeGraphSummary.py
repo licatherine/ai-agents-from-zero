@@ -1,13 +1,13 @@
 """
-【案例】多节点、固定边的完整图：input → process → output 三个节点，状态字段 process_data 在节点间传递并逐步更新，对应教程中「图的构建流程」与「状态在节点间的传递」示例。
+【案例】多节点、固定边的完整图：input → process → output 三个节点，状态字段 process_data 在节点间传递，并在默认覆盖规则下被后续节点更新。
 
 对应教程章节：第 23 章 - LangGraph API：图与状态 → 1、Graph API 之 Graph（图）
 
 知识点速览：
 - StateGraph(GraphState) 指定状态类型后，各节点接收完整 state，返回对 state 的「部分更新」字典。
-- 未为字段指定 Reducer 时，默认覆盖：后一节点返回的 process_data 会覆盖前一节点的值。
+- 本例的重点是“图怎么搭起来”，不是“状态怎么累积起来”；未为字段指定 Reducer 时，默认覆盖：后一节点返回的 process_data 会覆盖前一节点的值。
 - 固定边：add_edge 依次串联 START → input → process → output → END，执行顺序确定。
-- 编译后 invoke(initial_state) 传入初始 process_data，结果中可看到最后一轮 process_data 的内容。
+- 编译后 invoke(initial_state) 传入初始 process_data，结果中最终保留的是最后一次写入该字段的内容。
 """
 
 from typing import TypedDict
@@ -23,7 +23,7 @@ from langgraph.graph import StateGraph
 6、执行工作流。"""
 
 
-# 定义状态：process_data 用于在节点间传递并累积/覆盖的中间数据
+# 定义状态：process_data 用于在节点间传递；本例未指定 Reducer，因此后续节点会按默认覆盖规则更新它
 class GraphState(TypedDict):
     process_data: dict
 
