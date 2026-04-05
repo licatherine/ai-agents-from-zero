@@ -4,9 +4,9 @@
 对应教程章节：第 25 章 - LangGraph 高级特性 → 1、流式处理（Streaming）
 
 知识点速览：
-- get_stream_writer() 访问流写入器，可多次调用，适合「步骤 1/2/3」类进度。
-- stream_mode=["custom", "updates"] 时，迭代得到 (mode, chunk)，按 mode 分支处理。
-- 节点返回值仍参与状态合并；本例 progress 为列表，默认 Reducer 为覆盖，若需追加可改为 Annotated[list, operator.add] 等。
+- `get_stream_writer()` 负责把“图运行过程中的自定义消息”主动往外推；它和节点返回的状态更新是两条并行通道。
+- `stream_mode=["custom", "updates"]` 时，迭代得到 `(mode, chunk)`，非常适合前端一边看业务进度，一边看状态更新。
+- 本例最值得观察的是：`writer(...)` 写出的 `custom` 数据不会自动进 State；节点真正写回图状态的，仍然是最后 return 的那份 dict。
 """
 
 from typing import TypedDict

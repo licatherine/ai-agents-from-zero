@@ -4,9 +4,9 @@
 对应教程章节：第 25 章 - LangGraph 高级特性 → 1、流式处理（Streaming）
 
 知识点速览：
-- graph.stream(..., stream_mode="updates")：每步只推送「本节点产生的增量」（字典，键为节点名等）。
-- graph.stream(..., stream_mode="values")：每步推送「当前整份状态的快照」，便于观察状态如何一步步填满。
-- 与 invoke 不同：stream 在图未跑完时即可消费 chunk，适合日志、进度条与调试。
+- `stream(..., stream_mode="updates")`：每步只推送“本节点本次改了什么”，更像增量日志。
+- `stream(..., stream_mode="values")`：每步推送“当前完整状态长什么样”，更像全量快照。
+- 这是理解第 25 章 Streaming 主线的关键案例：同一张图，只是换了流模式，看到的数据视角就完全不同。
 """
 
 from typing import TypedDict

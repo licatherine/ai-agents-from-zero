@@ -5,8 +5,9 @@
 
 知识点速览：
 - stream_mode 为列表时，每次迭代得到 (mode, chunk) 元组，便于前端按类型分别处理。
-- values 看「全貌」，updates 看「增量」；debug 输出更细（部分环境或版本可能需额外配置）。
-- 节点函数返回的字典会按 State 的 Reducer 合并；本例字段未显式 Annotated，默认为覆盖更新。
+- `values` 看“全貌”，`updates` 看“增量”；`debug` 输出更细，适合调试，不适合直接当业务输出。
+- 这个案例的核心价值是帮你建立“同一张图可以同时暴露多种观察视角”，而不是背住某个模式名。
+- 节点函数返回的字典仍按 State 的 Reducer 合并；本例字段未显式 Annotated，默认就是覆盖更新。
 """
 
 from typing import TypedDict

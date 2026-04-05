@@ -6,8 +6,8 @@
 知识点速览：
 - 依赖包：项目根目录 `requirements.txt` 已包含 `langgraph-checkpoint-sqlite`；全量安装用 `pip install -r requirements.txt`，或单独 `pip install langgraph-checkpoint-sqlite`。生产环境更常用 Postgres（`langgraph-checkpoint-postgres`）等实现。
 - SqliteSaver(conn=...) 与 sqlite3.connect 配合；数据库文件路径需本机可写，目录需事先存在。
-- 与 InMemorySaver 用法相同：compile(checkpointer=...)、invoke(..., config)、get_state(config)。
-- LangGraph 还提供 langgraph-checkpoint-postgres 等，按部署环境选型。
+- 与 InMemorySaver 用法相同：`compile(checkpointer=...)`、`invoke(..., config)`、`get_state(config)`，区别主要在于存储介质。
+- 这个案例更像“从学习版持久化走向接近真实部署版”的过渡，重点是理解后端替换而不是 API 换了一套。
 """
 
 import sqlite3

@@ -4,9 +4,9 @@
 对应教程章节：第 25 章 - LangGraph 高级特性 → 1、流式处理（Streaming）
 
 知识点速览：
-- get_stream_writer() 仅在图执行（stream/astream）过程中有效，在 writer(...) 中传入 dict 等即可推送。
-- 调用 graph.stream 时 stream_mode 须包含 "custom"（可与其他模式组合，如 ["values", "custom"]）。
-- 自定义块与状态 updates 相互独立：前者给 UI/日志用，后者仍走 State 的 Reducer。
+- 这是 `custom` 模式的最小案例，重点不是业务逻辑，而是先看懂“节点内部怎么主动写出一段流式消息”。
+- `get_stream_writer()` 仅在图执行（stream/astream）过程中有效；调用 `graph.stream` 时，`stream_mode` 里必须包含 `custom`。
+- 自定义块与状态更新是分开的：前者更适合 UI/日志/进度提示，后者仍然通过 State 和 Reducer 管理。
 """
 
 from typing import TypedDict
