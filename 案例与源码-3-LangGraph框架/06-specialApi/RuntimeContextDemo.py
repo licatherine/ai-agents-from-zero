@@ -7,6 +7,7 @@
 - StateGraph(State, context_schema=ContextSchema)：图的「运行时配置」由 context_schema 描述，不进入 state，适合放模型名、连接串、密钥等。
 - 节点签名 (state, runtime: Runtime[ContextSchema])：runtime.context 即 invoke(..., context=...) 传入的对象，类型安全。
 - invoke(initial_state, context=ContextSchema(...))：将配置注入图，节点内用 runtime.context.xxx 读取，便于测试与多环境部署。
+- 这个案例的核心不是“把更多字段塞进 context”，而是建立“配置和状态分离”的意识：业务数据走 State，环境配置走 Runtime Context。
 """
 
 from typing import Annotated

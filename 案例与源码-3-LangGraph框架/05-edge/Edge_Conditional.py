@@ -5,8 +5,8 @@
 
 知识点速览：
 - add_conditional_edges(source, route_fn, mapping)：route_fn(state) 的返回值作为 key，在 mapping 中查到下一节点名；若为 bool，常用 {True: "node_a", False: "node_b"}。
-- 路由函数在 source 节点执行后被调用，根据当前 state 决定分支；适合「分支流程控制」。
-- State 可用 Pydantic BaseModel 定义，便于带默认值与校验。
+- 条件边的重点是“让边负责分流，而不是把所有 if/else 都塞回节点里”；路由函数在 source 节点执行后被调用，根据当前 state 决定下一跳。
+- 本例顺手演示了 State 也可以用 Pydantic BaseModel 定义，这更适合需要默认值和校验的场景。
 """
 
 from typing import Optional

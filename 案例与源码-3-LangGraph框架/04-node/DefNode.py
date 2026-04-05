@@ -4,9 +4,9 @@
 对应教程章节：第 24 章 - LangGraph API：节点、边与进阶 → 1、Graph API 之 Node（节点）
 
 知识点速览：
-- 节点函数签名为 (state) -> dict，返回对 state 的部分更新；若节点需要额外参数，可用 functools.partial 预先绑定，再传给 add_node。
-- add_node(name, node_func, retry_policy=RetryPolicy(...))：retry_policy 为可选参数，可指定 max_attempts、retry_on 等，仅对符合条件的异常重试。
-- RetryPolicy 的 retry_on 可为可调用对象 (exception) -> bool，用于自定义「哪些异常重试、哪些不重试」。
+- Node 本质上是被图调度的 Python 函数；本例重点不是业务逻辑，而是理解“节点如何被 add_node 注册进图”。
+- 节点常见返回值是对 State 的局部更新 dict，而不是整份完整状态；若节点需要额外参数，可用 functools.partial 预先绑定，再传给 add_node。
+- add_node(name, node_func, retry_policy=RetryPolicy(...)) 说明节点除了函数本身，还能挂执行策略；本例顺手演示了 retry_policy 的挂法。
 """
 
 from functools import partial

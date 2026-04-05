@@ -4,9 +4,9 @@
 对应教程章节：第 24 章 - LangGraph API：节点、边与进阶 → 1、Graph API 之 Node（节点）
 
 知识点速览：
-- add_node(..., cache_policy=CachePolicy(ttl=秒数))：该节点的输出会按「输入」生成缓存键，ttl 内命中则跳过执行。
-- compile(cache=InMemoryCache())：指定使用内存缓存实现；首次执行走节点，后续相同输入在 ttl 内直接返回缓存。
-- set_entry_point / set_finish_point 可替代 add_edge(START, node) 与 add_edge(node, END)，用于单节点图或明确入口/出口。
+- add_node(..., cache_policy=CachePolicy(...)) 是“节点声明自己支持缓存”；compile(cache=...) 则是“图编译时选择具体缓存后端”。
+- `ttl` 决定缓存保留多久；如果还需要更精细地控制“什么样的输入算同一次结果”，可以再配合 `key_func`。
+- 本例用 set_entry_point / set_finish_point 构成单节点图，目的是把“缓存行为”本身看清楚，不让流程结构分散注意力。
 """
 
 import time

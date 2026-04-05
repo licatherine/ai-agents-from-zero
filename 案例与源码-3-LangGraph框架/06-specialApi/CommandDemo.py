@@ -4,9 +4,9 @@
 对应教程章节：第 24 章 - LangGraph API：节点、边与进阶 → 3、Send、Command 与 Runtime 上下文
 
 知识点速览：
-- 节点函数返回 Command(update=字典, goto=节点名或END)，表示先对 state 应用 update，再跳转到 goto；若 goto=END 则结束图。
-- 与条件边的区别：条件边只做路由；Command 在路由的同时写入 state，适合「决策节点」既要写日志/标记又要转交下一节点的场景。
-- 常用于 decision_agent 根据消息内容路由到 math_agent / translation_agent，或检测到任务完成后 goto=END 并写结束消息。
+- `Command(update=..., goto=...)` 可以先按 Reducer 规则把 update 合并回 State，再决定下一跳；这正是它和普通节点返回 dict 的关键区别。
+- 与条件边的区别：条件边更像“节点执行完后再单独路由”，而 Command 更像“这个节点自己就是决策点，离场时把状态和去向一起交代清楚”。
+- 本例还顺手演示了一个工程上很重要的点：带循环或回跳的图，最好配合明确的终止条件与递归上限，避免流程跑飞。
 """
 
 from typing import Annotated

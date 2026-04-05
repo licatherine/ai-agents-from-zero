@@ -7,6 +7,7 @@
 - set_entry_point(node_id)：图从该节点开始执行，底层等价于 add_edge(START, node_id)。
 - set_finish_point(node_id)：执行到该节点后图结束，底层等价于 add_edge(node_id, END)。
 - 适合线性链或单入口单出口的图，减少重复写 START/END 边。
+- 本例重点是理解“入口/出口的声明方式”，不是引入新类型的边；它本质上仍然是在配置普通边。
 """
 
 from typing_extensions import TypedDict
@@ -45,18 +46,7 @@ def main():
     builder.add_node("node_a", node_a)
     builder.add_node("node_b", node_b)
 
-    """
-    set_entry_point(node_id) 和 set_finish_point(node_id) 是 LangGraph 为「图对象」提供的配置方法，
-    核心作用是将你自定义的业务节点，和内置的 START/END 特殊节点做 “自动绑定”，简化图的入口 / 出口边的定义，
-    本质是语法糖（底层还是帮你执行了 add_edge(START, 入口节点) / add_edge(出口节点, END)）
-    
-    set_entry_point(node_id)
-        图的实际执行入口是 node_id 这个自定义节点，底层会自动创建一条边 add_edge(START, node_id)，
-        无需你手动写这条边
-    set_finish_point(node_id)
-        当流程走到 node_id 这个自定义节点时视为流程结束，底层会自动创建一条边 add_edge(node_id, END)，
-        无需你手动写这条边
-    """
+    # set_entry_point / set_finish_point 是更简洁的入口出口配置方式，本质上仍然是在帮你建立 START/END 的边
     builder.set_entry_point("node_a")
     builder.add_edge("node_a", "node_b")
     builder.set_finish_point("node_b")

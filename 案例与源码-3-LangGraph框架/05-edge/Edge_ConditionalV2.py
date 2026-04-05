@@ -6,6 +6,7 @@
 知识点速览：
 - add_conditional_edges(START, route_fn, {"condition_1": "node1", "condition_2": "node2", ...})：路由函数返回的字符串与 mapping 的 key 匹配，决定从 START 进入哪个节点。
 - 适合「多分支入口」：根据初始 state 的某个字段（如 x）决定第一跳，再各自到 END。
+- 它和上一份条件边案例的区别不在 API 本身，而在于这里强调的是“字符串路由键 + mapping”的多分支入口写法。
 """
 
 from langgraph.graph import StateGraph, START, END

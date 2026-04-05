@@ -5,7 +5,8 @@
 
 知识点速览：
 - add_conditional_edges(START, route_input, {"greeting": "greeting_node", ...})：invoke 传入的 state 先交给 route_input，返回值作为 key 在 mapping 中查下一节点，实现「不同输入走不同入口」。
-- 与「条件边」区别：条件边是「某节点执行完后」再分支；条件入口点是「图一启动」就分支，常用于路由到不同处理逻辑。
+- 与「条件边」区别：条件边是“某节点执行完后”再分支；条件入口点是“图一启动”就分支，常用于做一级路由。
+- 本例重点是理解“图从哪里开始”可以由输入动态决定；至于问候、告别、问题这三类文案本身，只是为了帮助观察路由效果。
 """
 
 from typing import TypedDict
@@ -64,14 +65,7 @@ def create_simple_graph():
     stateGraph.add_node("farewell_node", handle_farewell)
     stateGraph.add_node("question_node", handle_question)
 
-    """条件入口点
-     add_conditional_edges(START, route_function, mapping)
-         START：从图的起点开始
-         route_function：决定去哪里的函数，返回一个字符串（路由键）
-         mapping（可选）：路由键到节点名的映射
-
-    START → route_input()函数 → 返回"greeting" → 映射到"greeting_node" → 执行handle_greeting → END
-    """
+    # 条件入口点：图从 START 进入后，先调用 route_input，再根据 mapping 决定第一跳去哪个业务节点
     stateGraph.add_conditional_edges(
         START,  # 起点
         route_input,  # 路由函数

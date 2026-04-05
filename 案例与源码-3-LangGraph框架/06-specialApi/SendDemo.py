@@ -7,6 +7,7 @@
 - 条件边若返回 List[Send]（或 Sequence[Send]），每个 Send 指定「下一节点 + 传入该节点的 state」，框架会并行执行这些分支并合并结果。
 - Map 阶段：生成主题列表 → 为每个主题构造 Send("make_joke", {"subject": 主题})；Reduce 阶段：jokes 字段用列表合并 Reducer，多路结果合并成一条列表。
 - 适合「一批输入拆成多份、并行处理、再汇总」的流程。
+- 本例最值得观察的是：每个 Send 分支拿到的是“自己的那份状态”，而最终能不能顺利汇总，取决于下游字段有没有设计好对应的 Reducer。
 """
 
 from typing import Annotated, List, Sequence

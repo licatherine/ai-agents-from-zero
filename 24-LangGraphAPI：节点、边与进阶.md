@@ -1,177 +1,358 @@
-# 24 - LangGraphAPI：节点、边与进阶
+# 24 - LangGraph API：节点、边与进阶
 
 ---
 
 **本章课程目标：**
 
-- 掌握 **Node（节点）** 的概念、START/END、节点缓存（CachePolicy）与重试机制（RetryPolicy），会使用 `set_entry_point` / `set_finish_point`。
-- 掌握 **Edge（边）** 的类型：普通边、条件边、入口点与条件入口点，能编写路由函数实现分支与动态入口。
-- 了解 **Send**（Map-Reduce 并行）、**Command**（状态更新 + 路由）与 **Runtime 上下文**（context_schema）的适用场景与基本用法。
+- 理解 **Node（节点）** 的定义、职责与常见写法，知道节点为什么是 LangGraph 的最小执行单元。
+- 掌握 **Edge（边）** 的核心类型：普通边、条件边、入口点、条件入口点，建立“图为什么能按规则流转”的直觉。
+- 理解 **Send、Command、Runtime 上下文** 这三类进阶控制能力分别解决什么问题，知道它们和前面学过的 `Graph`、`State`、`Reducer` 是怎么接起来的。
+- 能运行并理解本章全部案例，为后续更复杂的 LangGraph 工作流、多智能体和高级特性打基础。
 
-**前置知识建议：** 已学习 [第 22 章 LangGraph 概述与快速入门](22-LangGraph概述与快速入门.md)、[第 23 章 LangGraph Graph API 与 State](23-LangGraphGraphAPI与State.md)，掌握图、State（Schema + Reducer）、TypedDict/BaseModel 及图的构建流程。
+**前置知识建议：** 建议先学习 [第 22 章 LangGraph 概述与快速入门](22-LangGraph概述与快速入门.md)、[第 23 章 LangGraph API：图与状态](23-LangGraphAPI：图与状态.md)，至少已经理解 `Graph`、`State`、`Schema`、`Reducer` 这几层关系。
 
-**学习建议：** 按「Node → Edge → Send/Command/Runtime」顺序学习；先跑通 Node、Edge 案例建立执行结构，再学习 Send、Command、Runtime 等高级控制。案例源码在 `案例与源码-3-LangGraph框架` 下（04-node、05-edge、06-specialApi）。
+**学习建议：** 本章建议按 **“Node 是什么 → Edge 怎么控制流程 → 什么时候需要 Send / Command / Runtime”** 的顺序学习。不要一上来把 Send、Command 看成“额外语法点”，它们本质上都是在回答一个问题：**图在运行时，到底怎么更灵活地控制下一步。**
 
 ---
 
 ## 1、Graph API 之 Node（节点）
 
-### 1.1 简介
+### 1.1 定义
 
-**知识出处**：[LangGraph 官方文档 - Graph API > Nodes](https://docs.langchain.com/oss/python/langgraph/graph-api#nodes)
+在 LangGraph 里，**Node（节点）** 可以先理解成：**图中的一个可执行步骤**。它通常就是一个 Python 函数，可以是同步函数，也可以是异步函数。图运行时，框架会按边的连接关系，依次或并行地调度这些节点执行。
 
-在 LangGraph 中，节点（Node）即 Python 函数（同步或异步），可接收 `state`、`config`（RunnableConfig）、`runtime`（Runtime 对象）等参数；通过 `add_node` 将节点加入图，未指定名称时默认使用函数名。
+如果说 [第 23 章](23-LangGraphAPI：图与状态.md) 重点在讲“图里有哪些共享状态”，那本章开始讲的 Node，重点就在讲：**状态到了某一站之后，要做什么处理。**
 
-![节点可接收 state、config、runtime 等参数](images/24/24-1-1-1.jpeg)
+所以 Node 的本质不是“图上的一个点”，而是：
 
-**节点可接收的三种参数：**
+- 一段明确的处理逻辑
+- 一次对当前 State 的读取
+- 一次对 State 的局部更新
 
-- **state**：图的当前状态。节点通过它读取或修改整条工作流的进度和数据（例如上一节点的输出、用户输入、中间结果等），是节点之间「传话」的载体。
-- **config**：类型为 `RunnableConfig`，表示**本次运行的配置与元数据**。例如 `thread_id`（标识当前会话或线程，多轮对话时区分不同用户）、`tags`（打标签，便于日志与监控）、`metadata` 等。不参与业务状态，主要用于「谁在跑、怎么记、怎么追踪」。
-- **runtime**：类型为 `Runtime`，表示**执行时的环境与工具**。可包含：**runtime context**（通过 `context_schema` 传入的配置）、**store**（持久化或访问外部存储）、**stream_writer**（流式写出，用于边跑边向调用方推送结果）等。适合放「和具体某次状态无关、但节点执行时需要用到」的依赖。
+LangGraph 官方对 `StateGraph` 的定义里有一句非常核心的话：节点的签名可以理解为 `State -> Partial<State>`。也就是说，节点通常读取当前状态，然后只返回它想更新的那部分字段，而不是每次都把整份完整状态重新手写一遍。
 
-Node 是图中的基本处理单元，代表工作流中的一个操作步骤，可绑定 Agent、大模型、工具或任意 Python 函数，具体逻辑自由实现。本质上，**节点就是「逻辑的容器」**：用 Python 函数把一段逻辑包起来，输入来自 State（和可选的 config、runtime），输出再写回 State。
+**官方文档与资源：**
 
-**写节点时的设计原则：**
+- **Graph API Overview**（英）：https://docs.langchain.com/oss/python/langgraph/graph-api | （中）：https://docs.langchain.org.cn/oss/python/langgraph/graph-api
+- **Use the Graph API**（英）：https://docs.langchain.com/oss/python/langgraph/use-graph-api | （中）：https://docs.langchain.org.cn/oss/python/langgraph/use-graph-api
 
-- **单一职责**：一个节点只做一件事，方便维护和复用。
-- **无状态 / 纯函数**：数据通过 state 传入，尽量不依赖外部可变状态；相同输入得到相同输出，便于重试和测试。
-- **可测试性**：逻辑集中在节点函数内，便于单测和排查问题。
+### 1.2 节点为什么重要
 
-**常见用法**：在节点里做 LLM 调用、工具调用，或组合成 Agent 的一步。
+Node 是图真正“干活”的地方。前面学过的 Graph、State、Reducer 更偏结构和机制，而节点负责承载具体业务逻辑。真实项目里，下面这些事情通常都写在节点里：
 
-【案例源码】`案例与源码-3-LangGraph框架/04-node/DefNode.py`（节点定义方式、`functools.partial` 绑定额外参数、`add_node` 时传入 `RetryPolicy`）
+- 调用大模型
+- 调用工具或外部 API
+- 做检索、重排、格式化
+- 做路由判断前的中间计算
+- 记录某一步的结果、状态标记或错误信息
 
-[DefNode.py](案例与源码-3-LangGraph框架/04-node/DefNode.py ":include :type=code")
+所以可以把三层关系记成一句话：
 
-### 1.2 START 与 END 节点
+- **Graph** 负责整体流程结构
+- **State** 负责共享数据
+- **Node** 负责每一步具体做什么
 
-**START** 为图的入口，可用 `add_edge(START, node_id)` 或 `set_entry_point(node_id)` 指定；**END** 为终止节点，可用 `add_edge(node_id, END)` 或 `set_finish_point(node_id)` 指定。二者都是 LangGraph 内置的「虚拟节点」，表示流程的起点和终点，不是你自己定义的普通节点。
+### 1.3 节点函数一般长什么样
 
-**START（入口）**：从「图开始」连到第一个要执行的节点，执行时就会先跑这个节点。
+根据官方 Graph API 文档，LangGraph 节点常见可以接收三类参数：
+
+- `state`：图当前这一步看到的共享状态
+- `config`：本次运行的配置与元数据，类型通常是 `RunnableConfig`
+- `runtime`：运行时对象，可访问 `context`、`store`、`stream_writer` 等
+
+最常见的节点先从这一种开始记：
 
 ```python
-from langgraph.graph import START
-# 第一个执行的节点是 node_start
-graph.add_edge(START, "node_start")
+def node(state: MyState) -> dict:
+    return {"some_key": "new_value"}
 ```
 
-**END（终止）**：从某个节点连到 END，表示该节点执行完后流程结束，没有后续节点。
+这也是初学者最该先掌握的形态：**读 state，返回局部更新 dict。**
+
+当你后面开始做更复杂的工作流时，再慢慢加入：
+
+- `config`：适合放 `thread_id`、`tags`、`metadata`
+- `runtime`：适合放模型名、数据库连接、API 密钥、环境配置这类不属于 State 的依赖
+
+![官方文档摘录：LangGraph 节点可接收 state、config、runtime 三类参数](images/24/24-1-3-1.jpeg)
+
+图里这三个词的层次建议这样记：
+
+- `state` 是“业务数据”
+- `config` 是“本次运行的配置和追踪信息”
+- `runtime` 是“节点执行时可访问的运行环境能力”
+
+这里再补一个很实用的点：`config` 和 `runtime` 这两个参数，通常是由 LangGraph 运行时通过关键字方式自动注入的。所以在大多数场景里，你不需要手动去“组装”它们；节点函数里是否声明、声明顺序如何，更多是为了表达“这个节点需要哪些运行时信息”。
+
+还有一个初学者非常容易踩的坑，也非常值得在这里提前讲清楚：**节点应该返回“增量更新”，而不是把接收到的整个 State 原样或修改后整份返回出去。**
+
+原因很简单：
+
+- LangGraph 会把节点返回值当成“本节点对状态的局部更新”
+- 然后再按字段对应的 Reducer 规则，把这些更新合并回全局 State
+
+所以更推荐的写法是：
 
 ```python
-from langgraph.graph import END
-# node_a 执行完后，没有后续节点了
+def node(state: MyState) -> dict:
+    return {"result": "new_value"}
+```
+
+而不推荐把整份 `state` 直接修改后再整体 return。因为那样很容易带来两个问题：
+
+- 没配置特殊 Reducer 的字段，会出现本不该被当前节点改动却被一起覆盖的情况
+- 配置了 Reducer 的字段，如果节点把“不属于本节点职责的状态”也一并返回，后续合并结果会更难预测
+
+你可以把这条规则记成一句话：**节点只返回自己真正负责更新的字段。**
+
+### 1.4 START、END 与入口出口
+
+在学节点时，经常会一起看到 `START` 和 `END`。它们不是你自己写的业务节点，而是 LangGraph 内置的两个**特殊虚拟节点**：
+
+- `START` 表示图的入口
+- `END` 表示图的结束
+
+最常见的写法是：
+
+```python
+graph.add_edge(START, "node_a")
 graph.add_edge("node_a", END)
 ```
 
-### 1.3 节点缓存（Node Caching）
+这表示：图从 `node_a` 开始执行，`node_a` 执行完后流程结束。
 
-LangGraph 支持基于节点输入的缓存，通过 `CachePolicy(key_func, ttl)` 配置；编译时指定缓存实现（如 `InMemoryCache()`）。缓存命中时直接返回结果，未命中时执行节点并写入缓存。
+如果图的入口出口很明确，也可以用：
 
-![节点缓存：key_func 与 ttl 配置示意](images/24/24-1-3-1.jpeg)
+- `set_entry_point(node_id)`
+- `set_finish_point(node_id)`
 
-**图中要点说明：**
+它们本质上是更简洁的语法糖，底层还是在帮你建立 `START -> node`、`node -> END` 这样的边。
 
-- **启用缓存的两步**：① 在**编译图**（或指定入口点）时传入缓存实现（如 `InMemoryCache()`）；② 为需要缓存的节点指定 **CachePolicy**（每个节点可单独配置策略）。
-- **key_func**：根据**节点输入**生成缓存键的函数。输入经过 `key_func` 得到唯一键；若两次输入的键相同，则命中同一缓存、直接返回上次结果，不再执行节点。
-- **ttl**：缓存的**存活时间（秒）**。超过 ttl 后该条缓存失效，下次会重新执行节点并写入新结果。若不设置 ttl，缓存**永不过期**（进程内一直有效，直到清空或重启）。
+### 1.5 节点怎么定义更贴近真实项目
+
+对初学者来说，节点最容易写成“什么都往里面塞”。但从真实项目角度看，节点更适合遵守下面几条原则：
+
+- **单一职责**：一个节点尽量只做一件事
+- **输入输出清楚**：看函数签名和返回值，就知道它依赖什么、更新什么
+- **少依赖外部可变状态**：优先通过 State 或 Runtime 传值，而不是偷偷读全局变量
+- **便于重试和缓存**：如果节点副作用太重，后面配置缓存或重试时会很难控
+
+你可以先把节点理解成“图里的一个小服务”，而不是“图里的一大坨代码”。
+
+### 1.6 案例：节点定义方式与 add_node
+
+这个案例是第 24 章最基础、也最值得先跑通的 Node 例子。它主要演示三件事：
+
+- 节点本质上就是 Python 函数
+- 节点除了最基本的 `state` 参数，还可以借助 `partial` 绑定额外参数
+- `add_node(...)` 时除了传节点函数，还可以顺手挂上 `retry_policy`
+
+【案例源码】`案例与源码-3-LangGraph框架/04-node/DefNode.py`
+
+[DefNode.py](案例与源码-3-LangGraph框架/04-node/DefNode.py ":include :type=code")
+
+这个案例最适合建立一个直觉：**Node 的重点不是“函数怎么写花哨”，而是“如何被图注册、调度、配置”。**
+
+### 1.7 节点缓存（Node Caching）
+
+节点缓存解决的问题很实际：**如果某个节点很贵、很慢、但相同输入经常重复出现，能不能不要每次都重新跑？**
+
+LangGraph 要真正命中缓存，至少需要两处配置：
+
+- **节点层**：给节点配置 `CachePolicy`
+- **编译层**：`compile(cache=...)` 提供具体缓存实现，例如 `InMemoryCache()`
+
+官方 `CachePolicy`（Python 中为 `key_func` / `ttl`；部分文档示意图可能写作 `keyFunc`，含义相同）里最重要的是：**key_func 决定“何种输入视为同一次计算”，ttl 决定结果保留多久**。工程上还要选**缓存后端**（内存、Redis、SQLite 等）：节点上挂策略、`compile(cache=...)` 时选定实现、运行时按键与 ttl 命中——三层一起才生效。
+
+- **key_func** 决定“什么样的输入算同一次结果”
+- **ttl** 决定“这份结果能复用多久”
+
+再往工程化一点理解，缓存其实还有第三个维度：**缓存后端放在哪里**。LangGraph 文档和相关实现里，常见可以看到：
+
+- 内存缓存
+- Redis 这类外部缓存
+- SQLite 这类本地持久化缓存
+
+所以完整一点看，缓存通常分三层：
+
+- **节点声明缓存策略**：例如 `CachePolicy(ttl=...)`
+- **图编译时选择缓存后端**：例如 `InMemoryCache()`
+- **运行时按 key_func + ttl 判断是否命中**
+
+如果你先只学最基础的一层，记成“节点声明支持缓存，图编译时选择具体缓存后端”就够了。
+
+![官方说明摘录：节点缓存需在编译时提供 cache、在节点上配置 CachePolicy（含 key 与 ttl）](images/24/24-1-7-1.jpeg)
+
+在真实项目里，缓存很适合这些节点：
+
+- 纯计算节点
+- 解析、格式化、清洗类节点
+- 成本高但输入重复率高的外部调用节点
+
+不太适合直接粗暴缓存的，则通常是：
+
+- 强依赖实时数据的节点
+- 带强副作用的节点
+- 输入看起来一样，但实际上上下文不同的节点
+
+### 1.8 案例：节点缓存
+
+这个案例的学习重点不是记住 `ttl=8` 这个数字，而是看清楚两件事：
+
+- `cache_policy=CachePolicy(...)` 是配置在节点上的
+- `compile(cache=InMemoryCache())` 是在图编译时提供缓存后端
+
+也就是说，**节点声明“我支持缓存”，图编译时再决定“实际用什么缓存”。**
 
 【案例源码】`案例与源码-3-LangGraph框架/04-node/Node_Cache.py`
 
 [Node_Cache.py](案例与源码-3-LangGraph框架/04-node/Node_Cache.py ":include :type=code")
 
-### 1.4 错误处理与重试机制
+### 1.9 错误处理与重试机制
 
-在 `add_node` 时传入 `retry_policy`（`RetryPolicy`，含 `max_attempts`、`retry_on` 等），可对节点配置重试；默认 `retry_on` 对多数异常重试，`ValueError`、`TypeError` 等不在重试列表中，也可自定义 `retry_on`。
+重试机制解决的是另一个现实问题：**节点失败了，是不是应该立刻整个图报错，还是可以重试一下？**
 
-**定义重试策略**：用 `RetryPolicy` 指定「最多重试几次、间隔多久、只对哪些异常重试」等；再在 `add_node` 时把该策略传给对应节点。用 `RetryPolicy` 指定「最多重试几次、间隔多久、只对哪些异常重试」等；再在 `add_node` 时把该策略传给对应节点。
+LangGraph 用 `RetryPolicy` 来描述这件事。官方参考文档里，`RetryPolicy` 主要包含这些常见参数：
 
-```python
-# 重试策略：最多 3 次，初始间隔 1 秒，带退避与抖动，仅对网络类异常重试
-retry_policy = RetryPolicy(
-    max_attempts=3,              # 最大重试次数（含首次共 3 次）
-    initial_interval=1,           # 首次重试前等待 1 秒
-    jitter=True,                  # 加随机抖动，避免大量请求同时重试（重试风暴）
-    backoff_factor=2,             # 每次重试间隔翻倍：1s → 2s → 4s …
-    retry_on=[RequestException, Timeout]  # 只对这类异常重试，其它异常直接抛出
-)
-graph.add_node("process", process_node, retry_policy=retry_policy)
-```
+- `max_attempts`：最多尝试执行多少次，包含第一次正式执行。
+- `initial_interval`：第一次重试前先等多久，通常以秒为单位。
+- `backoff_factor`：每次重试后，等待时间按多少倍增长，用来做退避。
+- `max_interval`：单次重试等待时间的上限，避免退避时间无限变长。
+- `jitter`：是否在等待时间上加入一点随机扰动，降低“同时重试把服务再次打爆”的风险。
+- `retry_on`：指定哪些异常值得重试；不符合条件的异常会直接抛出，而不是继续重试。
 
-- **max_attempts**：总共尝试执行的次数（含第一次）。
-- **initial_interval** / **backoff_factor**：重试间隔从 `initial_interval` 秒开始，每次按 `backoff_factor` 倍增。
-- **jitter**：在间隔上加随机偏移，避免同时重试压垮服务。
-- **retry_on**：列表或可调用对象，指定「哪些异常才重试」；未列出的异常（如 `ValueError`）不重试，直接抛出。
+其中最关键的不是把参数全背下来，而是先分清楚两层语义：
+
+- **时间策略**：多久重试一次，是否退避，是否加抖动
+- **异常策略**：哪些异常应该重试，哪些异常不该重试
+
+在真实项目里，一个很重要的经验是：
+
+- **网络抖动、临时超时** 这类问题通常适合重试
+- **参数错误、类型错误、业务逻辑错误** 通常不适合盲目重试
+
+所以 `retry_on` 的真正价值是：**让重试更像工程策略，而不是“失败了就无脑再跑一遍”。**
+
+### 1.10 案例：节点重试
+
+这个案例适合重点观察三种情况：
+
+- 默认重试策略是什么效果
+- 自定义 `retry_on` 时，如何只对特定异常重试
+- 哪些异常会直接失败，不会进入重试流程
 
 【案例源码】`案例与源码-3-LangGraph框架/04-node/Node_ExpErrRetry.py`
 
 [Node_ExpErrRetry.py](案例与源码-3-LangGraph框架/04-node/Node_ExpErrRetry.py ":include :type=code")
 
+学完 Node 这一节后，你至少应该建立这个认识：**节点不只是“一个函数”，它还是图里的一个可配置执行单元，可以挂缓存、挂重试策略，也可以明确入口和出口。**
+
 ---
 
 ## 2、Graph API 之 Edge（边）
 
-### 2.1 简介
+### 2.1 定义
 
-**知识出处**：[LangGraph 官方文档 - Graph API > Edges](https://docs.langchain.com/oss/python/langgraph/graph-api#edges)
+如果说 Node 决定“这一站做什么”，那 **Edge（边）** 决定的就是：**这一站做完之后，下一步去哪里。**所以边的本质不是装饰性的连线，而是图的**流程控制规则**。
 
-Edge 定义节点之间的连接与执行顺序；一个节点可有多个出边，多节点可指向同一节点。
+LangGraph 里最基础的两类边是：
 
-可以这样理解：**边就是流程的「连接线」**——从哪个节点到哪个节点、先执行谁后执行谁，都由边来决定。
+- **普通边（Normal Edge）**：固定从 A 到 B
+- **条件边（Conditional Edge）**：根据当前状态决定下一步去哪
 
-边的两大基础类型是 **普通边**（固定从 A 到 B）和 **条件边**（根据当前状态决定下一步走哪条路）；它们的核心作用都是 **实现复杂的路由逻辑**，让工作流既能顺序执行，也能按条件分支、汇聚。
+围绕这两类边，又会延伸出：
 
-类型包括：普通边、条件边、入口点、条件入口点。
+- **入口点（Entry Point）**
+- **条件入口点（Conditional Entry Point）**
 
-![Edge 关键类型示意](images/24/24-2-1-2.jpeg)
+它们共同回答的都是一个问题：**这张图到底怎么流转。**
 
-**四种边/入口的用法小结（对应上图）：**
+![官方文档摘录：四类边——普通边、条件边、入口点、条件入口点（images/24/24-2-1-1.jpeg）](images/24/24-2-1-1.jpeg)
 
-- **普通边（Normal Edges）**：不判断条件，直接「从当前节点到下一个节点」，无分支。
-- **条件边（Conditional Edges）**：先执行一个路由函数，根据当前状态/返回值决定下一步走到哪个（或哪些）节点，实现分支。
-- **入口点（Entry Point）**：指定「用户输入进来后，图从哪个节点开始跑」，即图的起点。
-- **条件入口点（Conditional Entry Point）**：用户输入进来后，先调一个函数，根据结果决定从哪个（或哪些）节点开始执行，起点可动态选择。
+**图注：** 普通边固定走向；条件边用函数选下一跳；入口点决定首次进入哪个节点；条件入口点在首跳前就做路由（适合“一进图先分类”）。
 
-### 2.2 Normal Edges（普通边）
+### 2.2 边为什么重要
 
-普通边表示无条件地从当前节点跳转到下一节点。
+很多初学者最开始会把注意力都放在节点函数本身，觉得“反正每个节点写好就行”。但从工作流角度看，真正决定图长什么样的，往往是边。
 
-![添加边的代码示意](images/24/24-2-1-1.jpeg)
+比如下面这些差别，本质上都在边上：
 
-**图中要点说明：**
+- 是固定顺序执行，还是动态路由
+- 是单入口，还是入口就分流
+- 是一条线走到底，还是中间多分支汇聚
+- 是普通顺序链，还是更接近小型决策系统
 
-- 左侧代码用多条 `add_edge` 把「固定边」串成一条线：`START → input → process → output → END`，执行顺序即按此路径依次跑。
-- 写完后需调用 `graph.compile()` 编译图，框架会校验结构是否正确（若某条边指向的节点尚未用 `add_node` 添加，会报错）。
-- 右侧流程图即该图编译后的直观表示：`__start__`、`input`、`process`、`output`、`__end__` 按箭头顺序执行；最后通过 `app.invoke(初始状态)` 运行图。
+所以可以说：**Node 让图有处理能力**、**Edge 让图有流程结构**。
+
+### 2.3 Normal Edges（普通边）
+
+普通边是最容易理解的一种：**执行完当前节点后，无条件进入下一个节点。**
+
+最典型的写法就是：
+
+```python
+builder.add_edge("node_a", "node_b")
+```
+
+这行代码的意思很简单：`node_a` 跑完，就去 `node_b`，没有判断、没有分支。
+
+![固定边示例：`add_edge` 串联 START → input → process → output → END 与对应有向图](images/24/24-2-3-1.jpeg)
+
+**图注：** 左侧为课件示例代码，右侧为线性拓扑；编译时若边指向未注册的节点会报错。
+
+对初学者来说，普通边最重要的学习价值不是“会写 `add_edge`”，而是建立这个直觉：
+
+- 图最基础的形态，就是一条固定路径
+- 很多复杂图，都是先从普通边搭出来的
+- 后面的条件边、Send、Command，本质上都是在“固定路径”基础上的增强
+
+### 2.4 案例：普通边
+
+这个案例演示的是最基础的线性图：`START -> node_a -> node_b -> node_c -> END`
+
+重点不是业务逻辑，而是看清楚：**当边是固定的，图就像一条声明式的工作流链。**
 
 【案例源码】`案例与源码-3-LangGraph框架/05-edge/Edge_Normal.py`
 
 [Edge_Normal.py](案例与源码-3-LangGraph框架/05-edge/Edge_Normal.py ":include :type=code")
 
-### 2.3 Conditional Edges（条件边）
+### 2.5 Conditional Edges（条件边）
 
-使用 `add_conditional_edges(节点名, 路由函数, 映射)`，根据状态选择性路由到不同节点。当流程不是「固定从 A 到 B」、而要**根据当前状态选择**下一步走哪条边（甚至结束）时，就用条件边。
+当流程不是“固定从 A 到 B”，而是“做完 A 后，要根据当前状态决定下一步去哪”，就需要条件边。
 
-**基本用法**：从某节点出发，用「路由函数」决定下一跳。路由函数接收当前 `state`，返回值即下一个节点的名字（或节点名列表；列表时多个节点会在下一步并行执行）。
-
-```python
-graph.add_conditional_edges("node_a", routing_function)
-```
-
-**带映射的写法**：若路由函数返回的是布尔、枚举或少量离散值，可用字典把「返回值」映射到「节点名」，语义更清晰。
+LangGraph 常见写法是：
 
 ```python
-# 返回 True 去 node_b，返回 False 去 node_c
-graph.add_conditional_edges("node_a", routing_function, {True: "node_b", False: "node_c"})
+graph.add_conditional_edges("node_a", route_fn, mapping)
 ```
 
-![条件边根据状态动态路由](images/24/24-2-3-1.jpeg)
+这里可以拆成三部分理解：
 
-**图中要点说明：**
+- `"node_a"`：从哪个节点出发做路由
+- `route_fn`：根据当前状态返回路由结果
+- `mapping`：把路由结果映射到具体目标节点
 
-- 流程从 START 进入后，先经过 **route func**（路由函数）；路由函数根据当前状态做判断，从多条**条件边**中选一条。
-- 图中示例：满足 condition_1 走 node 1、condition_2 走 node 2、condition_3 走 node 3，即「同一出口、多路分支、只走其一」；三个节点执行完后均可再汇聚到 END。
-- 这就是「根据状态动态路由」：下一步走哪个节点由运行时状态决定，而不是写死的顺序。
+最值得先记住的不是 API 形式，而是这句：
+
+**条件边 = 节点执行完后，再根据当前状态决定下一步去哪。**
+
+![条件边示意：路由函数根据 condition_1/2/3 择一路进入 node 1/2/3 再汇聚至 END（图中起点误写为 STAER，应理解为 START）（images/24/24-2-5-1.jpeg）](images/24/24-2-5-1.jpeg)
+
+真实项目里，条件边特别常见于这些场景：
+
+- 分类后走不同处理链
+- 校验通过/失败走不同分支
+- 检索结果足够/不足决定是否补检索
+- Agent 判断任务类型后进入不同专家节点
+
+### 2.6 案例：条件边
+
+这两个案例共同说明一件事：**条件边本质上是在图层做路由，而不是把所有判断都塞回节点函数内部。**
+
+你可以重点观察：
+
+- 一个案例用布尔值或简单条件做分支
+- 另一个案例用字符串 key + mapping 做多分支映射
 
 【案例源码】`案例与源码-3-LangGraph框架/05-edge/Edge_Conditional.py`、`Edge_ConditionalV2.py`
 
@@ -179,27 +360,32 @@ graph.add_conditional_edges("node_a", routing_function, {True: "node_b", False: 
 
 [Edge_ConditionalV2.py](案例与源码-3-LangGraph框架/05-edge/Edge_ConditionalV2.py ":include :type=code")
 
-### 2.4 入口点（Entry Point） 与 条件入口点（Conditional Entry Point）
+### 2.7 入口点与条件入口点
 
-- **入口点**：`set_entry_point(node_id)` 或 `add_edge(START, node_id)`。
-- **条件入口点**：`add_conditional_edges(START, route_function, mapping)`，根据输入从不同节点开始。
+前面的条件边是在“某个节点执行完之后再分支”，而入口点相关能力解决的是另一个问题：**图一开始从哪里进入。**
 
-**入口点（Entry Point）**：图启动时第一个执行的节点。用「从 START 连到该节点」或 `set_entry_point` 指定即可。
+最常见的两种情况是：
 
-```python
-from langgraph.graph import START
-graph.add_edge(START, "node_a")   # 图从 node_a 开始执行
-```
+- **入口点（Entry Point）**：图总是从同一个节点开始
+- **条件入口点（Conditional Entry Point）**：图启动时，就要先判断输入，再决定从哪个节点开始
 
-**条件入口点（Conditional Entry Point）**：图从哪个节点开始不固定，由路由函数根据**初始状态/输入**决定。用法与条件边相同，只是源节点改为 `START`；路由函数接收当前 state，返回值（或映射字典中的键）对应要执行的第一个节点。
+可以这样区分：
 
-```python
-from langgraph.graph import START
-# 路由函数根据 state 返回下一节点名，或返回可映射的值
-graph.add_conditional_edges(START, routing_function)
-# 或带映射：返回 True 从 node_b 开始，返回 False 从 node_c 开始
-graph.add_conditional_edges(START, routing_function, {True: "node_b", False: "node_c"})
-```
+- **普通入口点**：固定起点
+- **条件入口点**：动态起点
+
+这一点在真实项目里特别有用，因为很多系统刚接到请求时，就需要先做一级路由。比如：
+
+- 问候语走问候处理
+- 告别语走结束处理
+- 普通问题走问答流程
+
+### 2.8 案例：入口点与条件入口点
+
+这两个案例分别对应：
+
+- 用 `set_entry_point` / `set_finish_point` 指定固定入口出口
+- 从 `START` 上直接挂条件边，按初始输入决定进入哪条处理链
 
 【案例源码】`案例与源码-3-LangGraph框架/05-edge/Edge_EntryPoint.py`、`Edge_ConditionalEntryPoint.py`
 
@@ -207,155 +393,237 @@ graph.add_conditional_edges(START, routing_function, {True: "node_b", False: "no
 
 [Edge_ConditionalEntryPoint.py](案例与源码-3-LangGraph框架/05-edge/Edge_ConditionalEntryPoint.py ":include :type=code")
 
+### 2.9 条件边还能构成循环结构
+
+另一个很有价值、但初学者常常后知后觉的点是：**条件边不只能做分支，也能做循环。**
+
+例如：
+
+- 某个节点先做一次判断
+- 如果条件满足，就继续走下一个处理节点
+- 处理完后再回到前一个判断节点
+- 直到某个终止条件满足，再走向 `END`
+
+这类结构在 LangGraph 里很常见，尤其是：
+
+- Agent 的 ReAct 循环
+- “检索不够就继续补检索”的循环
+- 多步规划执行里的“继续 / 停止”判断
+
+但循环结构有一个隐藏风险：**如果终止条件设计得不对，图可能一直循环下去。**
+
+LangGraph 为此提供了 `recursion_limit` 这类保护机制。你可以先把它理解成：**给图执行设置一个上限，防止工作流无休止地反复调度。**
+
+对初学者来说，这里最重要的不是去死记默认值，而是先建立这个意识：
+
+- 条件边可以形成循环
+- 循环结构必须认真设计终止条件
+- 真实项目里最好配合递归/步数限制，避免图跑飞
+
+### 2.10 边怎么选更贴近真实项目
+
+学完这一节后，最重要的不是背“有几种边”，而是知道什么时候该选哪一种：
+
+| 场景                           | 更适合的做法 | 理解方式         |
+| ------------------------------ | ------------ | ---------------- |
+| 步骤固定，先后顺序明确         | 普通边       | 一条声明式流水线 |
+| 某一步之后要按状态分流         | 条件边       | 节点后置路由     |
+| 图总是从同一个地方开始         | 入口点       | 固定起点         |
+| 图一开始就要先分类再进不同流程 | 条件入口点   | 动态起点         |
+
+初学者常见误区是：一看到要判断，就把大量 `if/else` 全写进节点里。  
+更推荐的做法是：**让节点负责处理，让边负责流转。** 这样图结构会更清楚，也更容易可视化和调试。
+
 ---
 
 ## 3、Send、Command 与 Runtime 上下文
 
-### 3.1 总体概述
+### 3.1 为什么这一节属于进阶
 
-Send 和 Command 用于**高级工作流控制**：动态决定下一节点、是否更新状态、是否并行多路执行等。
+学完 Node 和 Edge 之后，你已经能搭出很多正常的图了。但真实项目里很快会遇到三类更复杂的问题：
 
-### 3.2 Send（多路并行与 Map-Reduce）
+- 下一步不是固定一个节点，而是**一批动态生成的子任务**
+- 某个节点不仅要更新状态，还想**顺手决定下一跳**
+- 某些配置不属于 State，但节点运行时又必须拿得到
 
-从条件边返回 `Sequence[Send]`，可为每个 Send 指定目标节点和传入状态，LangGraph 会并行执行，常用于 Map-Reduce（拆分任务 → 并行执行 → 汇总）。Send 接受两个参数：节点名称、传递给该节点的状态。
+Send、Command、Runtime 分别就是在回答这三类问题。
 
-通俗举例（对照 Map-Reduce）：
+所以这一节可以理解成：**在普通节点 + 普通边 + 条件边之外，LangGraph 还提供了哪些更灵活的控制原语。**
 
-假设要统计**全国人口按年龄的分布**。
+### 3.2 Send：动态多路分发与 Map-Reduce
 
-- **Map（拆分并行）**：按省（或省区市）把数据拆成多份，每份互不干扰。各省各自统计：例如本省 20 岁有多少人、21 岁有多少人……得到很多条「年龄 → 人数」的计数结果。
-- **Reduce（汇总归约）**：把各省的结果按**年龄**对齐，把同一岁别在各省的人数**加总**。例如把所有省的「20 岁」人数相加，得到全国 20 岁总人数；同理得到 21 岁、22 岁……最后拼成一张**全国年龄分布表**。
+`Send` 最适合解决的问题是：**上游节点产出了一批任务，任务数量运行时才知道，而我想把这批任务分发给同一个下游节点分别处理。**
 
-这与 Send 的直觉一致：先**多路并行**算局部结果，再在下游做一次**合并**。
+这正是典型的 Map-Reduce 思路：
 
-**为何需要 Send？**
+- **Map**：先把大任务拆成很多小任务
+- **Reduce**：小任务各自完成后，再把结果汇总
 
-默认情况下边和节点是事先写死的，且共享同一份 State。但有些场景下「下一步有几条边、每条边传什么状态」要**运行时才确定**，例如：前一个节点产出一份列表，你想对**列表里每一项**都跑同一个下游节点，且**每一项带自己的那一份状态**（条数事先不知道）。这时条件边的路由函数可返回 多个 `Send`，每个 `Send` 指定「去哪个节点」和「传给该节点的状态」，框架会据此**动态开出多路分支**，并行执行。
+LangGraph 里，条件边函数可以返回 `Sequence[Send]`。每个 `Send` 都包含两部分：
 
-**示例**：`state["subjects"]` 里有多个主题，对每个主题都去节点 `generate_joke` 生成笑话，每路传入自己的 `{"subject": s}`。
+- 目标节点名
+- 要传给该节点的那份状态
 
-```python
-def continue_to_jokes(state: OverallState):
-    return [Send("generate_joke", {"subject": s}) for s in state["subjects"]]
+官方 Graph API 文档对 `Send` 的描述很关键：**它允许图在运行时动态决定开出多少条分支，而且每条分支可以拿到不同版本的状态。** 并行分支写回同一状态字段时，通常要在 State 上配置合适的 [Reducer](23-LangGraphAPI：图与状态.md)（例如列表追加），否则结果难以汇总。
 
-graph.add_conditional_edges("node_a", continue_to_jokes)
-```
+![Send 与 Map-Reduce：send func 向 node1/2/3 并行分发不同 params，再汇入 reduce 至 END（图中起点误写为 STAER，应理解为 START）（images/24/24-3-2-1.jpeg）](images/24/24-3-2-1.jpeg)
 
-`node_a` 执行完后会调用 `continue_to_jokes`；返回的多个 `Send` 会形成多路并行，每路都进入 `generate_joke` 并带上各自的 `subject`。
+这和普通条件边的区别要分清楚：
 
-![Map-Reduce：拆分 → 并行 → 汇总](images/24/24-3-2-1.jpeg)
+- **普通条件边**：通常决定“下一步走哪一个节点”
+- **Send**：决定“下一步要开出多少个任务，每个任务分别带什么状态去哪个节点”
 
-**Send 的参数**：`Send(node, arg)` —— `node` 为目标节点名称（字符串），`arg` 为传给该节点的状态或消息（任意类型，通常为 dict）。每个 `Send` 会触发一次该节点的执行，且**只**收到这份 `arg`，即「每路自带私有状态」。
+### 3.3 案例：Send
 
-**Map-Reduce 式写法示例**：上游节点产出任务列表 `state["tasks"]`，路由函数为每个任务生成一个 `Send`，发往同一节点 `process_task`；再通过普通边把所有 `process_task` 汇聚到 `reduce_results`（扇出 → 并行 → 扇入）。
+这个案例非常适合拿来理解 LangGraph 的并行思维：
 
-```python
-def route_tasks(state: MapReduceState) -> list[Send]:
-    sends = []
-    for idx, task in enumerate(state["tasks"]):
-        send = Send("process_task", {"task_id": idx, "task_name": task})
-        sends.append(send)
-    return sends
-
-graph.add_conditional_edges("generate_tasks", route_tasks)  # 上游完成后调用 route_tasks，按返回的 Send 列表分发
-graph.add_edge("process_task", "reduce_results")            # 所有 process_task 都完成后，才执行汇总节点
-```
-
-**三条关键规则：**
-
-- ① 路由函数返回的 `list[Send]` 中，**每个 Send 触发一次目标节点的独立执行**，且各自携带自己的 `arg`（私有状态），多路**并行**。
-- ② `add_conditional_edges("generate_tasks", route_tasks)` 表示 `generate_tasks` 执行完后调用 `route_tasks`，用其返回的 Send 列表完成**任务分发**。
-- ③ `add_edge("process_task", "reduce_results")` 表示**所有** `process_task` 实例都执行完毕后，才会进入 `reduce_results` 做汇总。
+- 上游节点先生成一批主题
+- 条件边函数把这些主题映射成一组 `Send`
+- 下游节点针对每个主题分别生成笑话
+- 最后通过 Reducer 把多路结果合并回 State
 
 【案例源码】`案例与源码-3-LangGraph框架/06-specialApi/SendDemo.py`
 
 [SendDemo.py](案例与源码-3-LangGraph框架/06-specialApi/SendDemo.py ":include :type=code")
 
-### 3.3 Command（状态更新与流程控制）
+从项目角度看，Send 很适合这些场景：
 
-Command 可同时**更新状态**和**指定下一节点**（或 END），常用于人机闭环与多智能体交接。
+- 文档分片后并行处理
+- 多查询并行检索
+- 一批候选任务并行评分
+- 多个主题、多条记录、多段文本的批量处理
 
-与条件边的区别，可以记两句话：
+### 3.4 Command：更新状态 + 指定下一跳
 
-- **条件边**：路由函数只回答「下一步去谁」——返回值是节点名或 `Send` 列表等；它**不是**「往 State 里再写一批字段」的专用通道，公共 State 仍主要靠**普通节点** `return {"某字段": ...}` 来改。
-- **Command**：节点**只 return 一次**，但带两个「包裹」：`update`（要合并进 State）和 `goto`（下一跳）。框架在**同一次离场**里先按 Reducer 应用 `update`，再按 `goto` 走路由，所以叫**同时**——意思是**改状态和定去向写在同一个 `Command` 里**，而不是拆成两步 API。
+如果说条件边只负责“去哪”，那 `Command` 解决的是另一个很常见的需求：**某个节点在做完判断后，既想更新状态，又想直接决定下一步去哪。**
 
-可以记：**条件边 = 只管去哪；Command = 去哪 + 顺手把 State 改成什么样，一次说清楚。**
+官方 Graph API 文档里对 `Command` 的说明可以概括成一句话：**`Command` 是一种把状态更新和控制流放到同一次返回里的原语。**
 
-**两点约束**：Command **每次只能路由到一个节点**（不能像 Send 那样一次开出多路）；`update` 与 `goto` 在**同一条** `Command(...)` 里一并生效。
+最常见的两个参数是：
 
-![Command 的用法示意](images/24/24-3-2-2.jpeg)
+- `update`：当前节点希望写回 State 的局部更新内容，仍然会按字段对应的 Reducer 规则合并。
+- `goto`：当前节点执行完后，希望图下一步跳转到哪个节点；也可以直接跳到 `END` 结束流程。
 
-**基本用法**：节点函数返回 `Command(update=..., goto=...)`。`update` 为要对图状态做的修改（字典，会按 reducer 合并进全局状态）；`goto` 为下一节点名或 `END`（流程会跳转到该节点，相当于动态指定了一条边）。
+也就是说，一个节点可以：
 
-```python
-def my_node(state: State) -> Command[Literal["my_other_node"]]:
-    return Command(
-        update={"foo": "bar"},   # 状态更新：把 state["foo"] 设为 "bar"
-        goto="my_other_node"     # 流程控制：下一步执行 my_other_node
-    )
-```
+- 一边返回新的状态更新
+- 一边直接告诉图“下一步去哪个节点”
 
-**根据条件动态返回 Command**：在节点内根据 `state` 判断，再返回不同的 `Command`，可同时改状态和选下一跳，适合「先算一把、再决定交给谁」的场景（如人机闭环、转交专家节点）。
+这和条件边的边界要分清楚：
 
-```python
-# 在节点函数中返回 Command 来实现动态路由
-def agent_node(state: State) -> Command:
-    if need_help(state):
-        # 需要帮助：转交 expert_agent，并更新 messages
-        return Command(goto="expert_agent", update={"messages": state["messages"] + [new_message]})
-    else:
-        # 不需要：直接结束
-        return Command(goto=END)
-```
+- **条件边**：通常更适合“节点做完了，再单独根据状态决定去哪”
+- **Command**：更适合“这个节点本身就是决策点，离开时把状态和去向一起交代清楚”
+
+![Command 示意：单次只能路由到一个下游节点，并可同时更新 State（图中起点误写为 STAER，应理解为 START）](images/24/24-3-4-1.jpeg)
+
+### 3.5 案例：Command
+
+这个案例特别适合放在“决策节点”语境下理解。你可以重点观察：
+
+- 为什么 `decision_agent` 返回的不是普通字典，而是 `Command(...)`
+- 为什么它既能写入 `messages`、`current_agent`、`task_completed`
+- 又能同时用 `goto` 把流程交给下一个节点，或者直接去 `END`
 
 【案例源码】`案例与源码-3-LangGraph框架/06-specialApi/CommandDemo.py`
 
 [CommandDemo.py](案例与源码-3-LangGraph框架/06-specialApi/CommandDemo.py ":include :type=code")
 
-### 3.4 Runtime 运行时上下文
+在真实项目里，Command 很适合：
 
-通过 `context_schema` 将**不属于图状态**的配置（如模型名、数据库连接、API 密钥）传入节点，节点通过 `runtime.context` 访问；实现配置与状态分离、类型安全、依赖统一管理。
+- 决策节点
+- Agent 交接节点
+- 人机闭环中的“继续 / 暂停 / 转人工”节点
+- 需要边写日志边转发流程的节点
 
-**通俗理解**：图的 State 用来存「业务数据在节点间怎么流转」；而模型名、API Key、数据库连接等属于**运行环境/全局配置**，不适合塞进 State。Runtime 上下文就是专门放这类配置的：建图时用 `context_schema` 声明「有哪些字段」，调用 `invoke` 时用 `context` 传入具体值，节点里用 `runtime.context.xxx` 按需读取。
+### 3.6 Runtime 上下文：把配置和状态分开
 
-**三步用法：**
+前面我们一直在强调 State，但真实项目里并不是所有数据都该放进 State。比如下面这些东西：模型名、API Key、数据库连接、用户环境配置、当前运行的外部依赖对象。
 
-1. **定义 context_schema**：用 `@dataclass` 定义一个类，描述运行时上下文里有哪些字段（如 `llm_provider`），可带默认值。
+它们通常都不属于“图在节点间流转的业务状态”，而更像是**这次运行的静态上下文**。这时就更适合放进 Runtime 上下文，而不是硬塞进 State。
 
-   **@dataclass 是干什么的？** 它是 Python 标准库里的装饰器（`from dataclasses import dataclass`）：你给类写上「字段名 + 类型 + 可选默认值」，解释器会自动帮你生成 `__init__`（构造函数）、`__repr__`（打印好看）等样板代码，省得手写一长串赋值。这里用它来描述 context_schema，等于声明「运行时上下文这一坨配置有哪些键、各是什么类型、默认值是什么」；LangGraph 可以据此做校验，你在节点里用 `runtime.context.xxx` 时也有类型提示。注意：用 dataclass 不是强制的，也可以用普通 class 或 Pydantic 等，只要符合框架对 `context_schema` 的要求即可；教程选 dataclass 是因为写法短、适合配置类。
+官方 Graph API 和 `Use the graph API` 指南都强调了这一点：**运行时配置可以通过 `context_schema` 声明，并在调用图时通过 `context=...` 传入。**
 
-2. **建图时挂上 schema，调用时传入 context**：`StateGraph(State, context_schema=ContextSchema)`；执行时 `graph.invoke(inputs, context={"llm_provider": "anthropic"})`，传入的值会覆盖 schema 中的默认值，并做类型校验。
-3. **在节点中访问**：节点函数增加参数 `runtime: Runtime[ContextSchema]`，通过 `runtime.context.llm_provider` 等访问，类型安全。
+所以可以把两者的区别记成：
 
-```python
-from dataclasses import dataclass
+- **State**：会随着图运行不断变化的共享业务数据
+- **Runtime Context**：本次运行里节点可读、但不应混入业务状态的静态依赖或配置
 
-@dataclass
-class ContextSchema:
-    llm_provider: str = "openai"
+### 3.7 Runtime 的基本用法
 
-def node_a(state: State, runtime: Runtime[ContextSchema]):
-    llm = get_llm(runtime.context.llm_provider)  # 从运行时上下文取配置
-    # ... 节点逻辑
-    return state
+Runtime 上下文通常分三步：
 
-graph = StateGraph(State, context_schema=ContextSchema)
-# 执行时指定上下文信息，会覆盖 ContextSchema 中的默认值
-graph.invoke(inputs, context={"llm_provider": "DeepSeek-R1-Online-0120"})
-```
+1. 定义 `context_schema`
+2. 创建图时挂到 `StateGraph(..., context_schema=...)`
+3. 执行图时通过 `invoke(..., context=...)` 传入，节点里用 `runtime.context` 读取
+
+这里很适合把 `context_schema` 理解成“**运行时配置的结构声明**”。
+
+这也是为什么本章要单独讲 Runtime：因为它帮助你把“配置”和“状态”拆开。拆开之后，图会有几个明显好处：
+
+- State 更干净，不会什么都往里塞
+- 节点更容易测试
+- 不同环境、不同模型、不同依赖更容易切换
+
+### 3.8 案例：Runtime Context
+
+这个案例最适合重点看三件事：
+
+- `ContextSchema` 是怎么定义的
+- `StateGraph(..., context_schema=ContextSchema)` 是怎么把运行时上下文挂到图上的
+- 节点里怎么通过 `runtime.context.xxx` 读取配置
 
 【案例源码】`案例与源码-3-LangGraph框架/06-specialApi/RuntimeContextDemo.py`
 
 [RuntimeContextDemo.py](案例与源码-3-LangGraph框架/06-specialApi/RuntimeContextDemo.py ":include :type=code")
 
+### 3.9 补充理解：图内外数据怎么流动
+
+前面讲 Runtime 时，提到了 `stream_writer`，这里再补一个很有价值的整体认知：**图的最终结果，不一定只能等到 `invoke()` 全部结束后才能拿到。**
+
+因为 LangGraph 图本身实现了 Runnable 接口，所以也支持：`stream()`、`astream()`。
+
+这意味着你可以在图执行过程中，逐步拿到中间信息。课件里这部分讲得很有价值，整理成初学者更容易理解的方式，大概有下面几类常见模式：
+
+- `values`：每一步输出当前完整状态
+- `updates`：每一步只输出增量更新
+- `custom`：输出节点内部通过 `runtime.stream_writer(...)` 主动写出的自定义数据
+- `messages`：在调用 LLM 的节点中，流式拿到消息片段或 token
+- `debug`：输出更完整的调试信息
+
+这层能力为什么重要？因为真实项目里你经常会遇到下面这些需求：
+
+- 前端希望边跑边展示当前步骤
+- LLM 生成时希望 token 级别流式输出
+- 长流程执行时，希望知道现在卡在哪个节点
+- 调试复杂图时，希望观察每一步到底更新了什么
+
+所以你可以先把它理解成：`invoke()` 更像“等整张图跑完再拿结果”，`stream()` 更像“边跑边看图内部发生了什么”。
+
+### 3.10 Send、Command、Runtime 怎么区分
+
+这一节最容易混的，其实就是这三个东西。你可以用下面这张对照表来记：
+
+| 能力        | 它解决的问题                        | 最适合的理解方式       |
+| ----------- | ----------------------------------- | ---------------------- |
+| **Send**    | 动态开出多路子任务                  | 运行时并行分发         |
+| **Command** | 节点离场时同时更新状态并指定下一跳  | 决策节点的“一次性交代” |
+| **Runtime** | 给节点注入不属于 State 的配置与依赖 | 配置和状态分离         |
+
+如果用更口语化的一句话概括：
+
+- **Send**：一件事拆成很多小事并行去做
+- **Command**：这个节点现在就决定接下来谁来接手
+- **Runtime**：这次运行需要的环境配置别塞进 State
+
 ---
 
 **本章小结：**
 
-- **Node**：图的执行单元，可绑定任意函数；START/END、`set_entry_point` / `set_finish_point`；**CachePolicy**（key_func、ttl）、**RetryPolicy**（max_attempts、retry_on）；案例见 `04-node/`。
-- **Edge**：普通边、条件边、入口点、条件入口点；`add_conditional_edges` 实现分支与动态入口；案例见 `05-edge/`。
-- **Send / Command / Runtime**：**Send** 用于 Map-Reduce 式多路并行（条件边返回 `Sequence[Send]`）；**Command** 在节点内同时更新状态并指定下一跳（或 END）；**Runtime** 通过 `context_schema` 将配置与状态分离；案例见 `06-specialApi/`。
+- **Node** 是 LangGraph 的最小执行单元，本质上是被图调度的 Python 函数；除了最常见的 `state -> dict` 形式，还可以结合缓存、重试策略、`config`、`runtime` 使用。
+- **Edge** 决定流程怎么流转。普通边适合固定路径，条件边适合状态驱动分支，入口点和条件入口点则决定图从哪里开始。
+- **Send、Command、Runtime** 是三种很重要的进阶能力：Send 适合动态并行分发，Command 适合决策节点，Runtime 适合把配置和状态拆开。
+- 这一章最重要的不是死记 API，而是建立一个完整认知：**节点负责处理，边负责流转，State 负责共享数据，进阶控制原语负责让图在运行时更灵活。**
 
 **建议下一步：**
-在本地按顺序运行 Node、Edge、Send/Command/Runtime 案例，并尝试修改条件边路由、Command 的 update/goto、Runtime 的 context；若需子图、多智能体或持久化，可继续学习后续 LangGraph 进阶章节。
+
+建议先按顺序跑一遍 `04-node`、`05-edge`、`06-specialApi` 目录下全部案例，再进入后续 LangGraph 进阶章节。如果你能自己把一个“分类 → 分流 → 并行处理 → 汇总回答”的小工作流手写出来，这一章就真正学会了。
