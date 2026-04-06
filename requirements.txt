@@ -10,9 +10,9 @@
 #   激活后:  pip install -r requirements.txt
 
 # ---------- 核心框架（01-helloworld、02-models_io、04-prompt、05_parser 等） ----------
-langchain>=1.2,<2
-langchain-core>=1.2,<2
-langchain-openai>=1.1,<2
+langchain>=0.3,<1
+langchain-core>=0.3,<1
+langchain-openai>=0.2,<1
 openai>=1.0,<3
 python-dotenv>=1.0
 pydantic>=2.7,<3
@@ -47,15 +47,15 @@ markdown>=3.4
 jq>=1.6
 
 # ---------- RAG 文本分割（10-rag/textsplit 中 RecursiveDocumentSplitter 用 UnstructuredLoader 加载 rag.txt 需此依赖） ----------
-langchain-unstructured>=1.0
+langchain-unstructured>=0.1
 
 # ---------- MCP 与 Agent（11-mcp、12-agent：McpServerByFastMCP / McpServerWeatherByFastMCP / McpClientAgent / AgentSmartSelectV0.3 等） ----------
-mcp>=1.0
-langchain-classic>=1.0
-langchain-mcp-adapters>=0.2
+# mcp>=0.9  # 如果安装失败，可以注释掉这行
+# langchain-classic>=0.1  # 如果安装失败，可以注释掉这行
+# langchain-mcp-adapters>=0.2  # 如果安装失败，可以注释掉这行
 
-# ---------- LangGraph（第 22–26 章、案例与源码-3-LangGraph框架） ----------
-langgraph>=1.0,<2
+# ---------- LangGraph（第 22–26 章、案例与源码 -3-LangGraph 框架） ----------
+langgraph>=0.2,<1
 # SQLite 检查点：案例 SqlitePersistence.py 使用 langgraph.checkpoint.sqlite.SqliteSaver 时需此包（标准库 sqlite3 无需另装）
 langgraph-checkpoint-sqlite>=2.0,<4
 # Supervisor 多智能体：08-multi_agent/SupervisorV0.3.py（from langgraph_supervisor import create_supervisor）
