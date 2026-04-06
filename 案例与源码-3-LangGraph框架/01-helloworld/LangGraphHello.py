@@ -1,15 +1,15 @@
 """
-【案例】LangGraph 最简 HelloWorld：用「节点 + 边」构建一条线性链（START → greet → add_emoji → END），体会四要素 State / Nodes / Edges / Graph 与六步构建流程。
+【案例】LangGraph 最简 HelloWorld：用「State + Nodes + Edges + Graph」构建一张最小线性图（START → greeting → add_emoji → END），体会 Graph API 的入门写法和图可视化方式
 
 对应教程章节：第 22 章 - LangGraph 概述与快速入门 → 2、HelloWorld 快速入门
 
 知识点速览：
-- State：用 TypedDict 定义状态字段（如 name、greeting），在节点间传递。
-- Nodes：每个节点是一个函数，接收当前 state，返回要写回 state 的字典（部分更新）。
+- State：用 TypedDict 定义状态字段（如 name、greeting），表示这张图运行过程中会保存哪些数据。
+- Nodes：每个节点本质上都是一个函数，接收当前 state，返回“本节点要更新的字段字典”，不需要手动拼完整状态。
 - Edges：add_edge 定义执行顺序；START / END 为虚拟起止节点。
-- 六步流程：定义 State → 定义节点函数 → StateGraph(State) → add_node / add_edge → compile() → invoke(initial_state)。
-- 可视化：get_graph().print_ascii()、draw_mermaid() 可打印图结构；图中出现的 __start__、__end__ 为 LangGraph 内置虚拟节点名（__xxx__ 风格），框架保留，勿自定义同名节点。
-- Python 属性命名约定：xxx 公开；_xxx 受保护（约定勿直接访问）；__xxx 私有（会改名为 _类名__xxx）；__xxx__ 魔法属性/方法（如 __init__），语言或框架内置专用，勿自定义。__start__/__end__ 属第 4 类。
+- Graph API 入门主流程：定义 State → 定义节点函数 → StateGraph(State) → add_node / add_edge → compile() → invoke(initial_state)。
+- 可视化：compile() 之后可通过 get_graph().print_ascii() 和 draw_mermaid() 查看图结构；输出里的 __start__、__end__ 是 LangGraph 内置虚拟节点名，不要自定义同名节点。
+- 本案例虽然是线性流程，但它已经是后续“分支、循环、多节点 LLM 图”的最小雏形；第 23 章会继续展开 State Schema 和 Reducer。
 """
 
 from typing import TypedDict
@@ -51,7 +51,7 @@ result = app.invoke({"name": "z3"})
 print(result)
 print(result["greeting"])
 
-# 6. 可视化：ASCII 与 Mermaid 两种方式查看图结构
+# 6. 可视化：ASCII 和 Mermaid 两种方式最适合入门阶段快速看图结构
 print(app.get_graph().print_ascii())
 print("=" * 50)
 print(app.get_graph().draw_mermaid())
@@ -110,6 +110,3 @@ graph TD;
         classDef first fill-opacity:0
         classDef last fill:#bfb6fc
 """
-
-# ==================================================
-

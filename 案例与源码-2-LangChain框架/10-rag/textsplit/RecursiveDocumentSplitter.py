@@ -6,6 +6,7 @@
 知识点速览：
 - 实际 RAG 流程常是「加载器 load() → Document 列表 → 分割器 split_documents() → 更小的 Document 列表」。
 - split_documents(documents)：直接对 Document 列表切分，每个 Document 的 page_content 会被按 chunk_size/chunk_overlap 切块，切出的块仍带 metadata（可继承或按实现保留）。
+- 这类写法最贴近真实 RAG 项目，因为它既保留了 loader 产出的 metadata，又完成了后续向量化之前最关键的切块步骤。
 - 本示例用 UnstructuredLoader 加载 rag.txt，再用 RecursiveCharacterTextSplitter 切分；需 pip install python-magic-bin（部分环境）。
 - 为何用 split_documents 而不是 split_text？split_text(字符串) 入参是「一段文本」，返回字符串列表；这里入参是 Document 列表（来自 loader.load()），需要得到「带 metadata 的 Document 列表」供后续向量化/检索，只能用 split_documents。
 """
@@ -42,4 +43,3 @@ for splitter_document in splitter_documents:
 文档片段大小：55, 文档元数据：{'source': 'rag.txt', 'last_modified': '2026-03-10T10:36:41', 'languages': ['zho'], 'filename': 'rag.txt', 'filetype': 'text/plain', 'category': 'Title', 'element_id': '391f965ee98ac9ace2fac0a7c04ce062'}
 ……
 """
-

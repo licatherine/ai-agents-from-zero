@@ -1,14 +1,17 @@
 """
 【案例】ReAct 模式：推理 + 行动的多步工具调用（产品搜索与库存查询）
 
-对应教程章节：第 21 章 - Agent 智能体 → 5、实操与案例（5.1 ReAct）
+对应教程章节：第 21 章 - Agent 智能体 → 5、实操与案例（5.2 ReAct）
 
 知识点速览：
-- ReAct（Reason + Act）：Agent 在每轮先「思考」再「行动」——分析用户需求 → 选择工具并传入参数 →
-  观察工具返回 → 根据结果决定继续调用工具或给出最终答案，对应教程「1、Tool 与 Agent 的关系」中的 ReAct 循环图。
+- ReAct（Reason + Act）是 Agent 最经典、最适合入门的一种工作机制：先推理，再行动，再根据结果继续推理。
+  它不是 Agent 的唯一形态，但最适合帮助初学者看懂“为什么 Agent 不只是一次回答”。
 - 本案例提供两个 Tool：search_products（按类别查产品）、check_inventory（查库存）；Agent 自主决定
   调用顺序与次数（如先搜索再查库存），体现「多步、有条件」的决策能力。
-- 通过 result['messages'] 可追踪完整对话：AIMessage（含 tool_calls）、ToolMessage（工具输出）、最终 AIMessage（文本回答）。
+- 通过 `result["messages"]` 可追踪完整对话：AIMessage（含 `tool_calls`）、ToolMessage（工具输出）、
+  最终 AIMessage（文本回答）。这和新版教程里强调的“消息视角理解 Agent”是对应的。
+- 本案例使用 `create_agent + 本地 @tool` 这条 1.x 路线；如果真实项目里想进一步观察执行过程，
+  还可以结合 `stream()` 或 LangSmith 追踪，但这个文件先聚焦 ReAct 本身。
 
 关于 @tool 与 MCP：
 - 本案例使用 LangChain 的 @tool，在「当前进程」内定义并执行工具，不能直接改成 @mcp.tool() 这种形式。
@@ -110,6 +113,7 @@ model = ChatOpenAI(
 )
 
 # 系统提示中明确 ReAct：先推理、再选工具、基于结果继续推理直至得到完整答案
+# 这里是在“用 ReAct 作为最常见入门机制”，并不代表 Agent 只有这一种工作方式
 agent = create_agent(
     model,
     tools=[search_products, check_inventory],
@@ -140,6 +144,7 @@ print("=" * 40)
 
 
 # 可选：逐条解析 messages，观察 ReAct 循环（AIMessage.tool_calls、ToolMessage、最终 AIMessage）
+# 这也是理解现代 Tool Calling Agent 的一个非常直观的办法
 def track_react_cycle(messages):
     print("ReAct循环步骤分析:")
     step = 1
@@ -200,4 +205,3 @@ track_react_cycle(result1["messages"])
 #    📋  观察结果: 产品 WH-1000XM5: 有库存 (10 件库存) - 位置: 仓库-A...
 
 # ✅ 最终回答: 索尼 WH-1000XM5 是当前最受欢迎的无线耳机，受欢迎度为95%，且有库存（10件），存放于仓库-A。
-

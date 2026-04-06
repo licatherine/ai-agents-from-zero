@@ -1,30 +1,19 @@
 """
 【案例】Agent-to-Agent（A2A）协作：携程订机票 + 美团订酒店 + 滴滴打车
 
-对应教程章节：第 21 章 - Agent 智能体 → 5、实操与案例（5.2 A2A）
+对应教程章节：第 21 章 - Agent 智能体 → 5、实操与案例（5.3 A2A）
 
 知识点速览：
-- A2A = 多个专属 Agent 各司其职 + 一个总协调 Agent 负责调度与汇总。本案例中机票/酒店/打车三个
-  子 Agent 分别只绑定一个 @tool，总协调按业务顺序依次 invoke 子链并整合结果，对应教程「5.3 A2A」。
-- 子 Agent 实现方式：Prompt | llm.bind_tools([单个工具]) | output_parser，形成 Runnable 链；
-  总协调用 RunnableLambda 封装「按序调用子链 + 空结果兜底（调用 .func 原始函数）」的逻辑。
-- 规范要点：子 Agent 单一职责、统一 invoke({"input": "..."}) 接口；工具用 @tool(名称, description=...) 并写好参数说明，便于模型正确传参。
-
-模拟用户 “从北京飞上海、订浦东机场附近酒店、从机场打车到酒店” 的完整需求：
-
-核心设计思路
-
-拆分专属 Agent：
-    按业务领域拆分为机票 Agent（携程）、酒店 Agent（美团）、打车 Agent（滴滴），
-    每个 Agent 仅负责自身领域的任务，保证专业性；
-主协调 Agent：
-    新增出行总协调 Agent，作为入口接收用户需求、调度各专属 Agent、整合协作结果、反馈最终结论；
-LangChain1.0 核心组件：
-    使用AgentExecutor实现 Agent 执行、ChatOpenAI作为大模型驱动、Tool封装各 Agent 的核心能力、HumanMessage/AIMessage实现 Agent 间的消息通信；
-模拟业务能力：
-    因无真实平台接口，用模拟函数实现订机票 / 酒店 / 打车的核心逻辑（可直接替换为真实 API）
-
-简单说：A2A 调度 = 多个功能单一的 Runnable 子 Agent 链 + 一个控制调用逻辑的总协调器。
+- A2A = 多个专属 Agent 各司其职 + 一个总协调逻辑负责调度与汇总。本案例中机票 / 酒店 / 打车三个
+  子 Agent 分别只绑定一个 `@tool`，总协调按业务顺序依次 `invoke` 子链并整合结果，对应教程「5.3 A2A」。
+- 子 Agent 的实现方式是：`Prompt | llm.bind_tools([单个工具]) | output_parser`，本质上是
+  “单一职责的 Runnable 子链”，而不是一个什么都做的大一统 Agent。
+- 总协调部分使用 `RunnableLambda` 封装“按顺序调度多个子链 + 失败时兜底”的编排逻辑。
+  这更接近教程里强调的“分工 + 协调”，也是本案例最值得学习的地方。
+- 这个案例不是官方多智能体文档里最常见的“把 subagent 包装成 tool 给主 Agent 调”的写法，
+  但更适合初学者先看懂 A2A 的基本思想。
+- 规范要点：子 Agent 单一职责、统一 `invoke({"input": "..."})` 接口；工具用
+  `@tool(名称, description=...)` 并写清参数说明，便于模型正确传参。
 """
 
 import os
@@ -75,7 +64,7 @@ def didi_book_taxi(start: str, end: str, time: str) -> str:
     return f"【滴滴打车预约成功】\n起点：{start}\n终点：{end}\n用车时间：{time}\n车型：滴滴快车（舒适型）\n司机姓名：王师傅\n车牌号：沪A12345\n司机电话：13800138000\n预估费用：35元（券后立减5元，实付30元）\n预计接驾时间：16:35\n车型空间：5座，可放2件24寸行李箱"
 
 
-# ===================== 专属 Agent：每链只绑定一个工具，prompt | llm_with_tools | output_parser = Runnable =====================
+# ===================== 专属 Agent：每条子链只绑定一个工具，体现“单一职责” =====================
 def create_ctrip_agent(llm):
     llm_with_tools = llm.bind_tools([ctrip_book_flight])  # 仅暴露机票工具，单一职责
     prompt = ChatPromptTemplate.from_messages(
@@ -127,9 +116,9 @@ def create_didi_agent(llm):
     return prompt | llm_with_tools | output_parser
 
 
-# ===================== 总协调 Agent：按业务顺序调用子链，空结果时用 .func 兜底 =====================
+# ===================== 总协调器：按业务顺序调用子链，必要时用 .func 兜底 =====================
 def create_travel_coordinator_agent(llm, ctrip_chain, meituan_chain, didi_chain):
-    """总协调：按顺序调用子 Agent 链，异常或空结果时调用工具的 .func 原始函数兜底"""
+    """总协调：负责编排顺序，不负责再去“自由选工具”做 ReAct 式决策。"""
 
     def a2a_schedule(input_dict):
         print("🔍 开始执行A2A协作测试，依次调用各业务Agent...\n")
@@ -358,4 +347,3 @@ if __name__ == "__main__":
 """
 
 # ==========================================================================================
-

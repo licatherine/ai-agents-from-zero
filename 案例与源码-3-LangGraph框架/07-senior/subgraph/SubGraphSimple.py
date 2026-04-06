@@ -6,7 +6,8 @@
 知识点速览：
 - 子图 compile 后作为父图的一个 node；父图 invoke 的初始状态会传入子图（字段对齐时）。
 - 子图 TypedDict 多出的键（如 sub_message）仅在子图内部可见，父图输出按 ParentState 过滤。
-- 直接修改 state["parent_messages"].append(...) 时需注意：若需不可变更新风格，可返回新列表以符合最佳实践；本例为演示原地修改可读性。
+- 本例重点是理解“父子图可以共享部分字段，但不是所有字段都会一路透到父图最终输出”。
+- 直接修改 `state["parent_messages"].append(...)` 时需注意：若追求更稳的不可变更新风格，真实项目里通常更推荐返回新列表；本例保留原地修改只是为了更容易观察共享字段变化。
 """
 
 from typing import TypedDict

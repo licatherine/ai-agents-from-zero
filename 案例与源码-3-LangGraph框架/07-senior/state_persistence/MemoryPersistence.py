@@ -6,8 +6,8 @@
 知识点速览：
 - compile(checkpointer=...) 后，每次 invoke 会在检查点中留下快照；config["configurable"]["thread_id"] 标识一条「对话线程」。
 - get_state(config) 取当前线程最新状态；get_state_history(config) 取历史快照序列（用于调试或时间回溯）。
-- InMemorySaver 数据仅在进程内存中，进程结束即丢失；生产可换 SqliteSaver、PostgresSaver 等。
-- langgraph-checkpoint 提供 BaseCheckpointSaver 抽象与序列化协议；InMemorySaver 适合本地实验。
+- `InMemorySaver` 数据仅在进程内存中，进程结束即丢失；它最适合先帮助你理解“checkpoint 到底是什么”。
+- 本例最值得观察的是：Persistence 不只是“把结果存起来”，而是把图每一步的状态历史都保留下来，为后面的 Time-Travel 打基础。
 """
 
 from typing import Annotated

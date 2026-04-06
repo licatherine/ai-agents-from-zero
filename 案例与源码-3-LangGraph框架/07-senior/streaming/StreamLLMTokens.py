@@ -5,7 +5,8 @@
 
 知识点速览：
 - stream_mode="messages" 时，每次迭代一般为 (message_chunk, metadata)：chunk 为模型输出片段，metadata 标明节点等上下文。
-- 节点内若使用 model.invoke，流式需配合支持 stream 的调用方式；本例在 stream 消费侧打印 chunk.content，实现边生成边输出。
+- 这个案例最适合用来建立“LangGraph Streaming 不只流状态，也能流模型输出”这层认知。
+- 流式消费侧通常关心 `chunk.content` 和 `metadata`；前者是输出片段，后者帮助你知道这些片段来自哪个节点。
 - 需配置环境变量（如 aliQwen-api）与网络；模型、base_url 按你本地教程为准。
 """
 

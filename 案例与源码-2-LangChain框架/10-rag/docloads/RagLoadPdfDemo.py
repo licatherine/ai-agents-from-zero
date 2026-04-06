@@ -6,6 +6,7 @@
 知识点速览：
 - PDF 需专用加载器；PyPDFLoader 支持本地路径或在线 URL，extraction_mode 可选 plain（纯文本）或 layout（按版面）。
 - 每页通常对应一个 Document，metadata 中会带页码等信息，便于后续检索时定位来源。
+- PDF 往往是文档解析里最麻烦的一类：同样是“能读出来”，不代表读出来的结构就一定适合直接做 RAG，因此很多项目里还会继续接切块、清洗，甚至更强的 PDF 解析工具。
 - 若需更好排版与表格识别，可了解 Unstructured 等库的 PDF 加载器（见教程 2.2 常用加载器表）。
 - 为何没 import pypdf 却要装 pypdf？PyPDFLoader 在 langchain_community 内部会「按需」import pypdf 来解析 PDF，langchain-community 不自动安装它，所以需单独 pip install pypdf。
 """

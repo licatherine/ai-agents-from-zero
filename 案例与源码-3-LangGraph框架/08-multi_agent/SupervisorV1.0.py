@@ -4,9 +4,11 @@
 对应教程章节：第 26 章 - LangGraph 多智能体与 A2A → 2、多智能体案例：Supervisor 与 Handoff
 
 知识点速览：
+- 这是本章最重要的 Supervisor 案例：用 create_agent 定义子 Agent，再由 create_supervisor 统一调度，形成更贴近当前主流写法的多智能体结构。
+- 这里的“主管调子 Agent”本质上对应官方多智能体文档里的 Subagents 模式；主管负责统一入口与路由，子 Agent 负责狭窄领域任务。
 - pip install langgraph-supervisor；子 Agent 的工具函数必须具备清晰 docstring，便于模型绑定工具模式。
-- create_supervisor(...).compile() 得到可 stream/invoke 的图；主管 prompt 描述调用顺序与语言约束。
-- filter_messages 用于弱化移交过程英文提示、去重，教学演示可忽略实现细节，重点理解主管—子 Agent 数据流。
+- create_supervisor(...).compile() 得到可 stream/invoke 的图；主管 prompt 不只是提示词，更是在约束整个调度流程与角色边界。
+- filter_messages 只是教学辅助工具，用于弱化移交过程中的英文提示、去重和压缩噪声；重点应放在观察主管—子 Agent 的数据流与控制流。
 - 文末保留【输出示例】字符串，便于对照本地运行结果（模型输出可能略有差异）。
 """
 
@@ -72,7 +74,7 @@ supervisor = create_supervisor(
 ).compile()
 
 
-# 5. 消息过滤器，就是一个工具类，处理大模型返回的重复废话，直接用可以不看
+# 5. 消息过滤器：只服务于教学演示，帮助更清楚地观察主管和子 Agent 的有效中文输出
 def filter_messages(chunk: dict) -> str:
     """提取并过滤消息，只返回中文内容，去除重复和英文"""
     output = ""
@@ -148,33 +150,24 @@ def main():
     print("=" * 60)
     print()
 
-    # 准备输入数据
-    # 创建一个字典，包含一个messages键
-    # messages是一个列表，包含一个消息字典
-    # 每个消息字典包含role（角色）和content（内容）字段
+    # 准备输入数据：Supervisor 图和普通 Agent 一样，入口仍然是 messages
     input_data = {"messages": [{"role": "user", "content": user_request}]}
 
-    # 使用流式处理
+    # 使用流式处理，便于观察主管如何依次调度两个子 Agent
     try:
-        # 创建一个空集合，用于记录已经打印过的消息内容，避免重复显示
+        # 记录已打印内容，避免在演示时重复刷屏
         seen_contents = set()
 
         for chunk in supervisor.stream(input_data):
-            # 调用filter_messages函数处理当前chunk，提取并过滤其中的消息
             filtered_output = filter_messages(chunk)
-            # 如果filtered_output不为空（即有过滤后的消息内容）
             if filtered_output:
-                # 将过滤后的输出按行分割成列表 strip() 去除首尾空白字符，split('\n') 按换行符分割
                 lines = filtered_output.strip().split("\n")
-                # 遍历每一行
                 for line in lines:
-                    # 检查该行是否非空且不在已见过内容的集合中
                     if line and line not in seen_contents:
                         print(line)
-                        # 将该行内容添加到已见过集合中，确保不会重复打印
                         seen_contents.add(line)
 
-        # 如果输出太少，显示总结信息
+        # 如果流式输出过少，就给一个兜底总结，避免读者误以为程序没有完成
         if len(seen_contents) < 2:
             print("\n" + "=" * 60)
             print("预订已完成！")
@@ -183,7 +176,7 @@ def main():
             print("=" * 60)
     except Exception as e:
         print(f"\n处理过程中出现错误: {e}")
-        # 如果出错，直接调用工具
+        # 教学兜底：即使多智能体流程异常，也能直接调用工具帮助理解业务目标
         print("\n正在直接执行预订...")
         flight_result = book_flight(from_airport, to_airport)
         hotel_result = book_hotel(hotel_name)

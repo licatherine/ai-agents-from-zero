@@ -1,14 +1,13 @@
 """
-【案例】多种 Reducer 并存：同一 State 里 messages 用 add_messages 追加、tags 用 operator.add 拼接列表、
-score 用 operator.add 做数值累加；演示从 START 同时连出两条边时两节点并行、再各自到 END 的合并效果。
+【案例】多种 Reducer 并存：同一 State 里 `messages` 用 add_messages 追加、`tags` 用 operator.add 拼接列表、`score` 用 operator.add 做数值累加；演示同一份 State 里不同字段可以有不同合并规则。
 
-对应教程章节：第 23 章 - LangGraph API：图与状态 → 2、Graph API 之 State（状态）
+对应教程章节：第 23 章 - LangGraph API：图与状态 → 3、State 的更新机制：Reducer（规约函数）
 
 知识点速览：
-- add_messages：节点只返回「增量」消息，自动与历史合并为一条对话链；invoke 里也可传 openai 风格的 {"role","content"} 字典，运行时会转为 HumanMessage/AIMessage。
-- operator.add 作用于列表时相当于拼接（extend）；作用于 float 时为普通加法累加。
-- 从同一 START 连到多个节点：这些节点会按图调度执行（本例两节点均从 START 出发再到 END），对同一字段的多次更新由各字段的 Reducer 合并。
-- 节点返回 dict 的键即「要更新的状态字段」；未返回的字段保持 Reducer 合并后的结果。
+- 这是第 23 章里最适合建立“State = Schema + Reducer”整体直觉的案例：字段定义是一层，字段怎么合并是另一层。
+- add_messages：节点只返回「增量」消息，自动与历史合并为一条对话链；invoke 里也可传 OpenAI 风格的 `{\"role\", \"content\"}` 字典，运行时会转为 Message 对象。
+- operator.add 作用于列表时相当于拼接，作用于 float 时为普通加法累加；同一个 State 里完全可以给不同字段配置不同 Reducer。
+- 从同一 START 连到多个节点时，本例重点是观察“不同字段如何被各自的 Reducer 合并”，而不是把并行分支的执行先后当成业务契约。
 """
 
 from typing import Annotated, List

@@ -4,26 +4,26 @@
 对应教程章节：第 23 章 - LangGraph API：图与状态 → 2、Graph API 之 State（状态）
 
 知识点速览：
-- state_schema（整体状态）可拆出子集：input_schema 规定 invoke 时接受的输入，output_schema 规定返回给调用者的输出。
-- 构建时 StateGraph(OverallState, input_schema=InputState, output_schema=OutputState)，invoke 会先按 input_schema 过滤输入，执行结束后按 output_schema 过滤再返回。
-- 节点内部仍使用完整 OverallState；只有「图的边界」受 input/output 约束，便于封装和类型安全。
+- 本例最适合拿来理解“State 不只有一种 Schema”：`OverallState` 是内部完整 State Schema，`InputState` / `OutputState` 是图对外暴露的输入输出契约。
+- 构建时 `StateGraph(OverallState, input_schema=InputState, output_schema=OutputState)`，第一个位置参数描述内部完整状态，后两个参数负责限制边界输入输出。
+- 节点内部仍围绕完整状态空间工作；只有「图的边界」受 input/output 约束，这种分层更贴近真实项目接口封装。
 """
 
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict
 
 
-# 仅包含「输入」字段的 Schema
+# 仅包含「输入」字段的 Schema：限制调用方进图时能传什么
 class InputState(TypedDict):
     question: str
 
 
-# 仅包含「输出」字段的 Schema
+# 仅包含「输出」字段的 Schema：限制图最终对外返回什么
 class OutputState(TypedDict):
     answer: str
 
 
-# 图内部使用的完整状态（输入 + 输出）
+# 图内部使用的完整 State Schema（输入 + 输出）
 class OverallState(InputState, OutputState):
     pass
 

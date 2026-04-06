@@ -8,9 +8,7 @@
 - 理解 LangChain 在 **1.x 时代**的产品边界、包结构、版本演进，以及它与 **LangGraph、LangSmith、Deep Agents** 的关系。
 - 建立对 **Model I/O、Chains、Memory、Retrieval、Tools/Agents、Callbacks** 的**六大核心模块**整体认知。
 
-**前置知识建议：** 具备 Python 基础（环境、包管理、基本语法），并对大模型、API 调用有初步认识。若尚未学习，可先阅读 [第 1-1 章 大模型认知与工程概览](1-1-大模型认知与工程概览.md)；若你已经接触过 [Coze / Dify 平台](3-基于Coze&Dify平台的智能体开发.md)，本章会帮助你把“低代码平台的直觉”过渡到“代码框架的思维”。
-
-**学习建议：** 本章以“建立全局地图”为主，不要求你立刻记住所有 API。建议按 **定义与作用 → 定位 → 包与版本 → 核心模块 → 项目学习路径** 的顺序学习，把 LangChain 先看成一个“AI 应用编排层”。完成本章后，直接进入 [第 10 章 LangChain 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)，会更容易把抽象概念和代码实践连起来。需要说明的是：**截至 2026 年 3 月 30 日，LangChain 官方主线已经进入 1.x 时代**，本章会以官方 1.x 文档为主，同时兼顾课程里仍然会遇到的 0.x / 经典写法。
+**学习建议：** 本章以“建立全局地图”为主，不要求你立刻记住所有 API。建议按 **定义与作用 → 定位 → 包与版本 → 核心模块 → 项目学习路径** 的顺序学习，把 LangChain 先看成一个“AI 应用编排层”。完成本章后，直接进入 [第 10 章 LangChain 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)，会更容易把抽象概念和代码实践连起来。需要说明的是：**如今，LangChain 官方主线已经进入 1.x 时代**，本章会以官方 1.x 文档为主，同时兼顾课程里仍然会遇到的 0.x / 经典写法。
 
 ---
 
@@ -260,7 +258,7 @@ LangChain 的演进大致可以分成三个阶段来理解：
 
 - **2024 年 2 月**：LangGraph 开源发布
 - **2025 年 10 月 20 日**：LangChain 官方发布 **v1.0.0**
-- **截至 2026 年 3 月 30 日**：学习 LangChain 应以 **1.x 文档语境**为主
+- **现在**：学习 LangChain 应以 **1.x 文档语境**为主
 
 ### 3.2 当前官方产品线理解
 
@@ -273,8 +271,7 @@ LangChain 的演进大致可以分成三个阶段来理解：
 | **LangSmith**   | 可观测性、评估、调试、部署平台 | 用来追踪、调试、评估和上线应用                                       |
 | **Deep Agents** | “开箱即用”的复杂 Agent 方案    | 官方当前推荐的复杂 Agent 起步方案，建立在 LangChain / LangGraph 之上 |
 
-这和早期“LangChain = 一切”的印象已经不一样了。  
-根据截至 2026 年 3 月 30 日的官方 Overview 页面，官方当前的区分大致是：
+这和早期“LangChain = 一切”的印象已经不一样了。现在官方当前的区分大致是：
 
 - 想快速做 Agent：可以从 **LangChain** 入手
 - 想做更复杂、更可控的 Agentic Workflow：用 **LangGraph**
@@ -583,10 +580,33 @@ Model I/O 可以理解为“**围绕模型调用本身的一圈能力**”。它
 
 ---
 
+**章节思考题：**
+
+1. LangChain 在 AI 应用里最核心的角色是什么？为什么它不是大模型本身？
+
+   **答案：** LangChain 最核心的角色是 AI 应用的编排层，负责把模型、Prompt、知识、工具、记忆等能力组织起来。它不是大模型本身，因为它不负责训练或提供底层模型参数，而是负责把这些能力接到业务里。
+
+2. 为什么 2026 年学习 LangChain 时，必须同时知道 LangChain 1.x、LangGraph 和 provider 包这几个关键词？
+
+   **答案：** 因为 2026 年的 LangChain 学习不能只停留在旧版链式 API：1.x 是当前官方主线，LangGraph 是 Agent 和复杂流程的重要底层，provider 包负责具体模型接入。这三者放在一起，才能看清现在的真实生态和代码写法。
+
+3. 六大模块里，哪几块最适合作为初学者的第一条学习主线？为什么？
+
+   **答案：** 最适合作为第一条主线的是 Model I/O、Prompt / Chains，以及后续自然衔接的 Parser。因为这条线最容易形成 `prompt | model | parser` 的最小闭环，既能快速出结果，也便于再扩展到 Tools、RAG 和 Agent。
+
+4. 如果让你现在给团队新人做 5 分钟分享，你会怎么用最少概念解释“LangChain 到底是干什么的”？
+
+   **答案：** 可以这样解释：LangChain 不是模型，而是一层把模型和外部世界粘起来的开发框架。你可以用它统一处理提示词、模型调用、结构化输出、知识检索、工具调用和流程编排，让原本零散的 AI 能力变成一个真正能交付的应用。
+
+5. 结合你自己的项目或设想中的项目，想一想：你最先会用到 LangChain 六大模块里的哪两块？为什么？
+
+   **答案：** 大多数项目一开始最先用到的，通常是 Model I/O 和 Prompt / Chains，因为你得先把模型稳定调起来并组织基本调用流程；如果项目本身是知识问答，那 Retrieval 也会很早介入。是否尽快上 Tools 或 Agent，要看任务是不是已经需要执行动作和多步决策。
+
 **本章小结：**
 
 - **LangChain** 不是大模型本身，而是位于 AI 应用架构中“**服务 / 编排层**”的开源框架，核心作用是把模型、Prompt、知识、工具、记忆、输出解析和调试能力组织成一个可维护的应用系统。它与 **Coze / Dify** 的关系不是替代，而是分工不同：前者偏代码框架，后者偏低代码平台；真实项目里常常先用平台验证，再用框架落地。
-- **截至 2026 年 3 月 30 日**，学习 LangChain 应以 **1.x 官方文档**为主线。要重点理解：`langchain` 主包已精简，很多旧能力迁移到了 `langchain-classic`；Agent 以 `create_agent` 为高层入口，底层建立在 **LangGraph** 之上；集成能力则通过 `langchain-openai`、`langchain-ollama` 等独立 provider 包扩展。
+- 2026年，学习 LangChain 应以 **1.x 官方文档**为主线。要重点理解：`langchain` 主包已精简，很多旧能力迁移到了 `langchain-classic`；Agent 以 `create_agent` 为高层入口，底层建立在 **LangGraph** 之上；集成能力则通过 `langchain-openai`、`langchain-ollama` 等独立 provider 包扩展。
 - 对初学者来说，最重要的不是一开始记住所有 API，而是先建立 **六块认知地图**：**Model I/O、Chains、Memory、Retrieval、Tools / Agents、Callbacks**。后续章节会按这张地图一块一块展开，并且已经在项目目录中配好了对应案例源码。
+- 从掌握结果看，学完本章后，你至少应该：能说清 LangChain 在 AI 应用架构里的位置：它是编排层，不是模型本身；能区分 LangChain、LangGraph、provider 包、低代码平台在真实项目里的分工；能用自己的话讲出六大模块分别解决什么问题，以及后续章节为什么按这个顺序展开。
 
 **建议下一步：** 直接进入 [第 10 章 LangChain 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)，先把 **API Key、模型名、Base URL、HelloWorld 调用、多模型共存、企业级封装与流式输出** 跑通。等你真正把第一个 LangChain 调用写出来，再回头看这一章的“定位、架构、模块”，理解会明显更扎实。

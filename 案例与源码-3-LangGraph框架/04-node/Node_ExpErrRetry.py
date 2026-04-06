@@ -4,9 +4,9 @@
 对应教程章节：第 24 章 - LangGraph API：节点、边与进阶 → 1、Graph API 之 Node（节点）
 
 知识点速览：
-- RetryPolicy(max_attempts=5)：默认 retry_on 会对多数异常重试，但 ValueError、TypeError 等在「不重试」列表中。
-- RetryPolicy(max_attempts=5, retry_on=custom_retry_on)：custom_retry_on(exception) -> bool 可自定义「仅对某类异常重试」。
-- 节点执行中若抛出「不重试」的异常，不会重试，直接向调用方抛错。
+- RetryPolicy 不只是“重试几次”，而是两层策略组合：一层是时间策略（重试次数、间隔、退避），一层是异常策略（哪些错误值得重试）。
+- RetryPolicy(max_attempts=5) 适合先观察默认行为；RetryPolicy(..., retry_on=custom_retry_on) 则更贴近真实项目里的精细控制。
+- 本例最值得关注的是：不是所有异常都应该重试，像 ValueError 这类逻辑/参数错误通常应直接失败。
 """
 
 from typing import Dict, Any

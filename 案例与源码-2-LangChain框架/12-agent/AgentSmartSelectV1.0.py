@@ -8,7 +8,10 @@
   create_agent(model, tools, system_prompt, response_format=...) 一步得到可调用的 Agent，对应教程「4、Agent 工作原理（V1.0）」。
 - 结构化输出：通过 response_format 指定 TypedDict（如 WeatherCompareOutput），Agent 的返回中会包含
   structured_response 字段，便于程序化处理（如比温度、写结论），而不必从自然语言里再解析。
-- 调用方式：agent.invoke({"input": "..."})，底层由 LangGraph 负责「推理 → 行动 → 反馈」循环。
+- 本文件重点演示 `create_agent` 最常见的 4 个输入：`model / tools / system_prompt / response_format`。
+  教程里还补充了 `checkpointer / middleware` 这两个更偏工程化的扩展点，但这里不作为主线展开。
+- 调用方式：当前示例用 `agent.invoke(...)` 直接看最终结果；如果真实项目里想看中间进展，通常还会配合
+  `stream()`，如果想做短期记忆，则会进一步引入 `checkpointer + thread_id`。
 """
 
 import os
@@ -29,7 +32,7 @@ load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 
 @tool
-def get_weather(loc: str) -> dict:
+def get_weather(loc: str) -> str:
     """
     查询即时天气函数
     :param loc: 城市英文名，如 Beijing、Shanghai。
@@ -62,6 +65,7 @@ model = ChatOpenAI(
 )
 
 # V1.0 一步创建 Agent：模型、工具、系统提示、输出格式一次传入
+# 如果后面还要扩展短期记忆或拦截控制，通常会继续给 create_agent 传 checkpointer / middleware
 agent = create_agent(
     model=model,
     tools=[get_weather],
@@ -74,6 +78,7 @@ agent = create_agent(
 )
 
 # 调用 Agent，返回结果中包含 messages 与 structured_response（若指定了 response_format）
+# 这里先用 invoke 看最终结果；如需观察中间步骤，可在工程里改为 stream()
 result = agent.invoke({"input": "请问今天北京和上海的天气怎么样，哪个城市更热？"})
 print(result)
 print()
@@ -90,4 +95,3 @@ print(json.dumps(result["structured_response"], ensure_ascii=False, indent=2))
 #   "hotter_city": "Shanghai",
 #   "summary": "上海比北京暖和约4.85°C，且天气晴朗，而北京多云。"
 # }
-

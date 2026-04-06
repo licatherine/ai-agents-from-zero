@@ -1,11 +1,11 @@
 """
 【案例】operator.add 作为 Reducer（字符串）：对字符串字段做「连接」，多节点返回的字符串会按顺序拼成一条。
 
-对应教程章节：第 23 章 - LangGraph API：图与状态 → 2、Graph API 之 State（状态）
+对应教程章节：第 23 章 - LangGraph API：图与状态 → 3、State 的更新机制：Reducer（规约函数）
 
 知识点速览：
 - Annotated[str, operator.add] 表示该字段用 operator.add 规约：语义为字符串拼接，即 current + update。
-- 适合多节点依次或并行产出文本片段、最后拼成完整文案的场景。
+- 适合多节点产出文本片段、最后拼成完整文案的场景；如果业务强依赖固定先后顺序，真实项目里更建议配合串行边使用。
 """
 
 import operator

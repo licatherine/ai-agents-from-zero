@@ -8,7 +8,11 @@
   本案例中一次问题「北京和上海哪个更热」触发多次工具调用，再由 Agent 汇总比较。
 - V0.3 流程：模型 + 工具 + 提示模板 → create_tool_calling_agent 得到 Agent → 用 AgentExecutor 执行，
   对应教程「3、Agent 工作原理（V0.3 视角）」：Agent 只做决策，Executor 负责真正调用工具并把结果传回 Agent。
-- 关键组件：ChatPromptTemplate 定义对话结构（含 agent_scratchpad 占位符）、AgentExecutor(verbose=True) 便于观察推理与工具调用过程。
+- 关键组件：ChatPromptTemplate 定义对话结构（含 `agent_scratchpad` 占位符）、AgentExecutor 驱动循环。
+- `agent_scratchpad` 可以理解成 Agent 的“草稿区 / 中间步骤区”，没有它，classic 路线下的多步推理就很难成立。
+- `AgentExecutor(verbose=True)` 很适合教学和排查，它相当于一个轻量级的执行日志窗口；新版教程里补充的
+  `stream()` / LangSmith 则是更偏 1.x 和工程化的观察手段。
+- 这个文件的核心价值不是“天气查询”，而是帮助你看清 classic Agent 是如何围绕一次问题完成多次工具调用的。
 """
 
 import json
@@ -53,7 +57,8 @@ llm = ChatOpenAI(
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
 )
 
-# 定义 Agent 的对话结构：system 定角色，human 为用户输入，placeholder 供 Executor 填入中间推理与工具调用记录
+# 定义 Agent 的对话结构：system 定角色，human 为用户输入，
+# placeholder 供 Executor 填入中间推理与工具调用记录
 prompt = ChatPromptTemplate.from_messages(
     [
         ("system", "你是天气助手，请根据用户的问题，给出相应的天气信息"),
@@ -70,7 +75,8 @@ tools = [get_weather]
 # 将 LLM、工具列表、提示模板组装成「可做工具调用决策」的 Agent（尚未执行）
 agent = create_tool_calling_agent(llm, tools, prompt)
 
-# AgentExecutor 负责循环：调用 Agent → 执行其选中的工具 → 把结果写回 agent_scratchpad → 再交给 Agent，直到结束
+# AgentExecutor 负责循环：调用 Agent → 执行其选中的工具 →
+# 把结果写回 agent_scratchpad → 再交给 Agent，直到结束
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 # 一次问题触发多工具调用（北京、上海天气）并聚合回答
@@ -105,4 +111,3 @@ print(result)
 
 # > Finished chain.
 # {'input': '请问今天北京和上海的天气怎么样，哪个城市更热？', 'output': '今天北京和上海的天气情况如下：\n\n- **北京**：阴，多云，当前气温为 **10.49°C**，体感温度约 **8.51°C**，湿度较低（35%），风速较小（0.49 m/s）。\n- **上海**：晴，当前气温为 **15.34°C**，体感温度约 **13.5°C**，湿度更低（22%），风速稍大（3.06 m/s），天空无云。\n\n**对比来看，上海更热**，当前气温比北京高约 **4.85°C**，且阳光充足，体感也更温暖。\n\n如需未来几天预报或穿衣建议，欢迎随时告诉我！ 😊'}
-

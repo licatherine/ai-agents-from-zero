@@ -1,14 +1,15 @@
 """
 【案例】RAG 综合流程：加载 docx → 分割 → 向量化存 Redis → 检索 → 提示词模板 → 大模型回答
 
-对应教程章节：第 19 章 - RAG 检索增强生成 → 3、RAG 综合案例：智能运维助手
+对应教程章节：第 19 章 - RAG 检索增强生成 → 3.3 After：使用 RAG 的完整流程
 
 知识点速览：
-- RAG = 先检索再生成：用户提问时先从向量库按相似度检索相关片段，把片段填进提示词作为 context，再连同问题一起发给大模型。
-- 流程：文档加载（Docx2txtLoader）→ 分割（CharacterTextSplitter）→ 向量化并写入 Redis（from_documents）→ as_retriever() 得到检索器 → 用 LCEL 把 retriever、prompt、llm 串成链（context + question → prompt → llm）→ invoke(question) 得到答案。
-- RunnablePassthrough() 表示「把输入原样传给下一环节」；这里把用户问题同时传给 retriever（作为查询）和 prompt（作为 {question}）。
+- 这是一个完整的管道式 RAG 案例：同一份脚本里同时包含了索引阶段（加载、切分、向量化、入库）和检索生成阶段（检索、拼 Prompt、调 LLM）。
+- 本例展示的是文档流驱动的入库路线：先通过 Loader 和 Splitter 得到 `Document` 列表，再用 `Redis.from_documents(...)` 一步完成向量化与建索引。
+- 流程：文档加载（Docx2txtLoader）→ 分割（CharacterTextSplitter）→ 向量化并写入 Redis（from_documents）→ `as_retriever()` 得到检索器 → 用 LCEL 把 retriever、prompt、llm 串成链（context + question → prompt → llm）→ `invoke(question)` 得到答案。
+- `RunnablePassthrough()` 表示「把输入原样传给下一环节」；这里把用户问题同时传给 retriever（作为查询）和 prompt（作为 `{question}`）。
+- 本例刻意保留了“有 RAG / 无 RAG”的对比，便于直观看到：RAG 的价值不只是“能回答”，而是“回答时是否真的用到了外挂知识库”。
 - 运行前需启动 Redis、配置 aliQwen-api，且 alibaba-java.docx 在可访问路径（如本脚本同目录）。
-- 脚本末尾会再跑一遍「无外挂知识库」对比：同一问题、context 改为「未提供相关文档」，不查向量库，用于对比有/无 RAG 的回答差异。
 """
 
 # pip install unstructured docx2txt python-docx
@@ -32,7 +33,7 @@ llm = init_chat_model(
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
 )
 
-# 提示词模板：{context} 由检索器填充，{question} 由用户输入填充
+# 提示词模板：{context} 由检索器填充，{question} 由用户输入填充；最终会生成一段字符串 Prompt 再交给聊天模型
 prompt_template = """
     请使用以下提供的文本内容来回答问题。仅使用提供的文本信息，
     如果文本中没有相关信息，请回答"抱歉，提供的文本中没有这个信息"。
@@ -58,7 +59,7 @@ embeddings = DashScopeEmbeddings(
 loader = Docx2txtLoader("alibaba-java.docx")
 documents = loader.load()
 
-# 2. 分割（此处用 CharacterTextSplitter；也可用 RecursiveCharacterTextSplitter）
+# 2. 分割（此处用 CharacterTextSplitter 便于快速跑通；真实项目里更常见的通用首选是 RecursiveCharacterTextSplitter）
 text_splitter = CharacterTextSplitter(
     chunk_size=1000, chunk_overlap=0, length_function=len
 )
@@ -80,7 +81,7 @@ retriever = vector_store.as_retriever(search_kwargs={"k": 2})
 # 5. LCEL 链：输入 question → context 由 retriever 查得，question 直通 → 拼 prompt → 调 llm
 rag_chain = {"context": retriever, "question": RunnablePassthrough()} | prompt | llm
 
-# 6. 提问并打印答案（有 RAG：从知识库检索）
+# 6. 提问并打印答案（有 RAG：从知识库检索）；未接输出解析器时，聊天模型返回的是 AIMessage，正文通常通过 .content 读取
 question = "00000和A0001分别是什么意思"
 result = rag_chain.invoke(question)
 print("\n=== 有外挂知识库（RAG：从 alibaba-java.docx 检索）===")
@@ -114,4 +115,3 @@ print("回答:", result_no_rag.content)
 # === 无外挂知识库（模拟：不检索，仅靠模型自身知识）===
 # 问题: 00000和A0001分别是什么意思
 # 回答: 抱歉，提供的文本中没有这个信息
-

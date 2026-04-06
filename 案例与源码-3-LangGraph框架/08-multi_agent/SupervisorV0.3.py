@@ -4,10 +4,11 @@
 对应教程章节：第 26 章 - LangGraph 多智能体与 A2A → 2、多智能体案例：Supervisor 与 Handoff
 
 知识点速览：
-- Supervisor 模式：中央主管模型按用户意图把任务派给 flight_assistant / hotel_assistant 等子 Agent。
+- 这是 Supervisor 的历史接口案例，适合帮助读者读懂旧资料与旧仓库代码；今天学习思路应以 SupervisorV1.0.py 为主。
+- Supervisor 的核心不是“子 Agent 有几个”，而是“是否存在唯一主管统一调度”；子 Agent 在这里本质上接近官方文档里的 Subagents。
 - langgraph.prebuilt.create_react_agent 在 LangGraph v1.0+ 已弃用，后续应迁移到 langchain.agents.create_agent（见 SupervisorV1.0.py）。
-- supervisor.stream(...) 按块输出多节点状态；print_chinese_messages 可过滤工具移交英文提示，仅观察中文业务内容。
-- 需安装 langgraph-supervisor；模型走 ChatOpenAI 兼容阿里云百炼等 OpenAI 兼容网关。
+- supervisor.stream(...) 按块输出多节点状态；print_chinese_messages 的作用只是弱化英文移交提示，帮助初学者更容易观察主管与子 Agent 的协作过程。
+- 需安装 langgraph-supervisor；模型走 ChatOpenAI 兼容 OpenAI 风格网关，本案例重点是理解 Supervisor 架构，不是关注具体模型厂商。
 """
 
 import os

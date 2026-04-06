@@ -4,26 +4,30 @@
 对应教程章节：第 20 章 - MCP 模型上下文协议 → 6、案例实战：本地 MCP 天气服务与客户端
 
 知识点速览：
-- MCP 客户端与服务器 1:1 对应：客户端负责向服务端发起请求、调用其暴露的工具。
+- MCP 客户端的职责是“连接服务端、发现能力、发起调用”；真实项目里一个客户端可以连接一个或多个
+  MCP 服务，本案例只是为了教学演示，先从最简单的单服务端开始。
 - 本案例为「同机、同进程演示」：客户端通过 Python 的 `from McpServer import mcp` 直接拿到服务端的
-  mcp 实例，再用 mcp._tools 调用已注册工具，并没有走网络（没有连 127.0.0.1:8000）。这样做的目的
-  是便于理解「工具暴露 → 发现 → 调用」的流程；实际生产里客户端会通过 SSE/STDIO 等协议连接独立进程。
-- 运行方式：直接运行本文件即可（会自动导入 McpServer 并创建 mcp，无需先单独启动 McpServer.py 进程）。
+  mcp 实例，再用 mcp._tools 调用已注册工具，并没有走真实的 MCP 协议通信。这样做的目的，是先看懂
+  「工具暴露 → 能力发现 → 发起调用」这条最小路径，再去理解后面的 FastMCP 与 LangChain 客户端案例。
+- 实际生产里，客户端通常会通过 stdio 或 HTTP/Streamable HTTP 连接独立的 MCP 服务；本仓库也保留了
+  `sse` 写法作为兼容和教学示例。
+- 运行方式：直接运行本文件即可。它会自动导入 McpServer.py 中的 mcp 对象，无需先单独启动服务端进程。
 """
 
 import json
 from loguru import logger
 
-# 「连接」方式：通过导入获取服务端的 mcp 对象，同进程内直接访问 mcp._tools，并非网络连接
+# 「连接」方式：通过导入获取服务端的 mcp 对象，直接读取其工具注册表，并非真实网络连接
 from McpServer import mcp
 
 
 class MCPWeatherClient:
-    """MCP 天气服务客户端，用于访问 MCPWeatherServer 服务端暴露的工具"""
+    """教学版客户端：直接访问服务端注册表，用来观察最小调用链路。"""
 
     def __init__(self, mcp_instance):
         self.mcp_instance = mcp_instance
         # 获取服务端已注册的所有工具（字典：工具名 -> 可调用函数）
+        # 真实 MCP 客户端不会直接碰 _tools，而是先握手/发现能力，再通过协议发起调用
         self.available_tools = mcp_instance._tools
 
     def check_tool_availability(self, tool_name: str) -> bool:
@@ -42,7 +46,8 @@ class MCPWeatherClient:
             return None
 
         try:
-            # 直接调用服务端已注册的工具函数（本案例同进程；实际可通过 SSE/STDIO 协议调用）
+            # 直接调用服务端已注册的工具函数。
+            # 真实项目里，这一步通常由 MCP 客户端经由 stdio 或 HTTP 传输层去完成。
             weather_result = self.available_tools[tool_name](city)
             logger.info(
                 f"成功获取 {city} 天气数据，返回结果长度：{len(weather_result)}"
@@ -133,4 +138,3 @@ if __name__ == "__main__":
     "cod": 200
 }
 """
-

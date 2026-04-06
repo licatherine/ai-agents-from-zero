@@ -4,10 +4,11 @@
 对应教程章节：第 26 章 - LangGraph 多智能体与 A2A → 2、多智能体案例：Supervisor 与 Handoff
 
 知识点速览：
-- Handoff 与「把子 Agent 当工具调」不同：显式构造下一跳输入 state，并用 Command(goto=[Send(...)], graph=Command.PARENT) 跳转到兄弟节点。
-- InjectedState 把当前 MessagesState 注入工具，便于携带对话历史；task_description 作为「交给下一位的工单说明」。
-- flight_assistant / hotel_assistant 由 create_agent 构建并作为节点加入同一 StateGraph，START 指向默认入口 Agent。
-- @tool 装饰的业务工具仍需 docstring；运行前配置 API Key 与网络。
+- Handoff 和 Supervisor 的最大区别，不是“也有多个 Agent”，而是“控制权会被正式交给下一位 Agent”，而不是始终由一个中央主管调度。
+- Handoff 与“把子 Agent 当工具调”不同：这里显式构造下一跳输入 state，并用 Command(goto=[Send(...)], graph=Command.PARENT) 跳转到兄弟节点。
+- InjectedState 把当前 MessagesState 注入工具，便于携带对话历史；task_description 充当“交给下一位的工单说明”，这正是 Handoff 里最值得关注的上下文工程。
+- flight_assistant / hotel_assistant 由 create_agent 构建并作为节点加入同一 StateGraph，START 指向默认入口 Agent；这说明 Agent 完全可以作为 LangGraph 图中的节点来组织。
+- @tool 装饰的业务工具仍需 docstring；本案例重点不是预订业务本身，而是观察“状态 + 任务说明 + 下一跳目标”如何一起交接。
 """
 
 import os
@@ -108,10 +109,10 @@ transfer_to_hotel_assistant = create_task_description_handoff_tool(
 
 # ===============================
 # 5. 定义 Agent（create_agent 新接口）
-# create_agent 不再显式接收 prompt，而是：
-# 通过 tool schema + tool 名称 + tool docstring
-# 通过 graph 上下文（handoff 描述）
-# 通过 MessagesState 历史消息
+# 这里不额外写长 prompt，而是更多依赖：
+# 1. 工具 schema / 名称 / docstring
+# 2. Handoff 工具本身描述的交接语义
+# 3. MessagesState 中持续携带的历史消息
 # ===============================
 flight_assistant = create_agent(
     model=model,

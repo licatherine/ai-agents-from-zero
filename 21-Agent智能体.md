@@ -4,281 +4,615 @@
 
 **本章课程目标：**
 
-- 理解 **Agent（智能体）** 与 **Tool（工具）** 的关系，掌握「推理 + 行动」的 ReAct 模式及 AgentExecutor 的工作流程。
-- 了解 LangChain 中 Agent 从 V0.3 到 V1.0 的简化演进（多步组装 → `create_agent` 一步创建）。
-- 会运行「工具 + 判断」、ReAct、A2A（Agent 与 Agent 协作）等实操案例，并理解其与 Tool、MCP 的衔接。
+- 理解 **Agent（智能体）** 到底是什么、适合解决什么问题，以及它与 [Tool](17-Tools工具调用.md)、Function Calling、[RAG](19-RAG检索增强生成.md)、[MCP](20-MCP模型上下文协议.md) 的关系。
+- 掌握 Agent 的核心工作方式：**围绕目标持续推理、决定是否调用工具、接收结果、继续决策，直到满足结束条件**。
+- 理解 LangChain 中 Agent 的两条学习主线：**V0.3 / classic 的 Agent + AgentExecutor**，以及 **V1.x 的 `create_agent` + LangGraph 运行时**。
+- 跑通并理解本章全部案例：`AgentSmartSelectV0.3.py`、`AgentSmartSelectV1.0.py`、`AgentReact.py`、`Agent2Agent.py`、`McpClientAgent.py`。
 
-**前置知识建议：** 已学习 [第 17 章 Tools 工具调用](17-Tools工具调用.md)，了解 [Tool](17-Tools工具调用.md) / Function Calling 与 `@tool`、`bind_tools` 的用法；建议已学 [第 20 章 MCP 模型上下文协议](20-MCP模型上下文协议.md) 与 [第 1-3 章 RAG、微调、续训与智能体](1-3-RAG、微调、续训与智能体.md) 中关于智能体的概述。
-
-**学习建议：** 先建立「Agent 是决策者、Tool 是能力组件」的直观印象，再按「Agent 是什么 → 与 Tool 的对比 → 演变与原理 → 实操与案例」顺序学习；案例需特定 Python 版本时文中会标明。
+**学习建议：** 本章建议按 **“Agent 是什么 → Agent 和 Tool 的边界 → Agent 如何工作 → LangChain 中的两条实现路线 → 实操案例 → 与 RAG / MCP / Function Calling 的关系”** 的顺序学习。不要一开始就死记 API，先把“**Agent 是决策层，不是工具本身**”这件事想清楚，后面的 ReAct、AgentExecutor、create_agent、A2A 才不会乱。
 
 ---
 
-## 1、Agent 是什么？与 Tool 的关系
+## 1、Agent 简介
 
-### 1.1 Agent 是什么
+### 1.1 定义
 
-在 LangChain 中，**Agent（智能体）** 是**决策者**：它决定**什么时候**调用哪个工具、根据上下文**下一步做什么**、如何处理工具返回并决定是否继续调用。Agent 的核心是 **推理 + 行动（Reason + Act）**，即 **ReAct 模式**（下一小节展开）。
+先给初学者一句最重要的话：**Agent 不是某个单独的模型，也不是某个单独的工具，而是一种“围绕目标持续做决策并调用能力”的运行方式。**
 
-从组成上看，一个完整的智能体可以概括为：
+如果只看最小本质，可以把 Agent 理解成：**Agent = 模型 + 工具集 + 运行循环 + 当前状态**。
 
-**Agent = LLM + Memory + Tools + Planning + Action**
+这里的四个部分分别代表：
 
-- **LLM（大语言模型）**：智能体的「大脑」，负责理解问题、推理和生成回答。
-- **Memory（记忆）**：能记住当前对话和过往信息，包括短期对话上下文和长期知识，便于连贯决策。
-- **Tools（工具）**：Agent 可调用的外部能力，如搜索、计算、查 API 等，用来做模型本身做不到的事（Tool 的具体定义见 1.3 节）。
-- **Planning（规划）**：把复杂任务拆成步骤、选最优顺序，而不是乱试。
-- **Action（行动）**：按规划真正去执行，通常通过调用工具或输出指令完成。
+- **模型（Model）**：负责理解用户目标、分析当前局面、决定下一步。
+- **工具集（Tools）**：负责执行动作，例如查天气、查库存、调用 API、搜索文档、访问数据库。
+- **运行循环（Loop）**：负责让模型不是只回答一次，而是可以“想一步、做一步、看结果、再决定下一步”。
+- **状态（State）**：负责保存本轮对话、工具返回、中间结果，有时也包含短期记忆。
 
-下图示意 Agent 如何做决策与调用工具；图中「规划 → 选工具 → 执行」即对应下文 ReAct 的 Thought → Action → Observation。
+这也是本章首先要修正的一个常见误区：**不是所有 Agent 都必须同时具备“长期记忆、复杂规划、多智能体协作”。**
 
-![](images/21/21-1-1-1.jpeg)
+对很多入门场景来说，一个最简单的 Agent 只要能：1. 读懂用户目标；2. 知道什么时候调工具；3. 能根据工具结果继续判断；4. 最后给出答案。就已经是 Agent 了。
 
-### 1.2 ReAct：Agent 如何工作
+上面的公式是帮助初学者先抓住重点的“最小理解版”。如果把 Agent 再进一步展开，它在更完整的架构图里还可能包含记忆、规划、反思等能力。所以下图更适合理解为“扩展后的能力拼图”，而不是和上面四项定义做一一对应。
 
-Agent 通过 **ReAct 循环**完成「推理 → 行动 → 观察」的迭代，直到任务满足结束条件。循环过程可分段理解如下：
+![Agent 扩展架构示意：中心为 Agent，周邻 Memory（短/长期）、Planning（反思、自评、思维链）、Tools（日历、计算、搜索等）与 Action，强调多模块协同而非最小四元组一一对应（中文）](images/21/21-1-1-2.png)
 
-- **思考（Thought）**：分析用户请求和当前状态，形成下一步计划。
-- **行动（Action）**：根据计划决定用哪个工具、传入什么参数。
-- **观察（Observation）**：接收工具返回的数据或错误信息。
-- **循环或结束**：根据观察结果，要么带着新信息进入下一轮「思考 → 行动 → 观察」，要么认为已足够、给出最终答案。
+![Agent 扩展架构示意：中心为 Agent，周邻 Memory（短/长期）、Planning（反思、自评、思维链）、Tools（日历、计算、搜索等）与 Action，强调多模块协同而非最小四元组一一对应（英文）](images/21/21-1-1-1.jpeg)
 
-四步首尾相接。下图中 Agent 的「规划 → 选工具 → 执行」即对应上述 Thought → Action → Observation。
+**官方文档与资源：**
 
-![](images/21/21-1-2-1.jpeg)
+- LangChain Agents：https://docs.langchain.com/oss/python/langchain/agents
+- LangChain Structured Output：https://docs.langchain.com/oss/python/langchain/structured-output
+- LangGraph Workflows and Agents：https://docs.langchain.com/oss/python/langgraph/workflows-agents
+- LangChain Multi-Agent / Subagents：https://docs.langchain.com/oss/python/langchain/multi-agent/subagents
+- ReAct 论文：https://arxiv.org/abs/2210.03629
 
-### 1.3 Tool 的定位及与 Agent 的对比
+### 1.2 Agent 最常见的工作方式：ReAct
 
-**Tool（工具）** 是**能力的封装**：一个可调用的函数，封装了具体能力（如调用搜索引擎、查数据库、调 API）。Tool 本身**没有决策能力**，只是被动等待被调用，类似 Java 里的 Util 工具类。也就是说：**Tool = 能力**，**Agent = 决策 + 使用这些能力**。
+**ReAct = Reason + Act。**中文可以理解成：**先推理，再行动。**
 
-**为什么有了 Tool 还需要 Agent？（面试题）**  
-因为 Tool 只提供「能做什么」，不负责「何时做、按什么顺序做、做到什么程度为止」。Agent 负责根据用户意图和中间结果做规划和决策，从而完成多步、有条件分支的任务。
+这是 Agent 最经典的一种运行循环：
 
-常见追问：单 Tool、单步任务要不要上 Agent？下面用几个典型场景对照「单靠 Tool 够不够」与「Agent 能做什么」：
+1. **Thought / Reason（思考）**：当前要做什么，先想一步。
+2. **Action（行动）**：如果需要外部能力，就调用某个工具。
+3. **Observation（观察）**：拿到工具返回结果。
+4. **继续循环或结束**：如果还没完成，就继续下一轮；如果信息足够，就给出最终答案。
 
-| 场景                                                         | 单靠 Tool 能解决吗？                                                                | Agent 能做什么？                                                                |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 用户问：「北京现在天气怎么样？」                             | **可以**。直接调天气 Tool 即可。                                                    | **用不上**。一步就能完成，不需要决策与编排。                                    |
-| 用户问：「帮我订明天北京到上海的机票，并查一下上海天气。」   | **不行**。Tool 不会自己决定「先订票还是先查天气」、也不会把两步结果组合起来。       | **可以**。Agent 会推理：先订票 → 再查天气 → 把结果组合成一句回复。              |
-| 用户问：「我有一份 PDF，帮我总结一下，再把总结发到我邮箱。」 | **不行**。需要多个 Tool（读 PDF、总结、发邮件），但谁先谁后、怎么串起来要有人决定。 | **可以**。Agent 会按顺序调用多个 Tool（读 PDF → 总结 → 发邮件），完成整条链路。 |
+所以 ReAct 的本质就是：**先推理，再行动；根据行动结果，再继续推理。**
 
-**关系类比**：Tool 像「工具箱里的螺丝刀、锤子」；Agent 像「有判断力的工匠」——知道什么时候用螺丝刀、什么时候用锤子，甚至先用螺丝刀再用锤子。
+这点和普通“只回答一次”的 LLM 调用差异非常大。普通对话通常是：用户提问、模型直接回答。而 Agent 更像：用户提问、模型判断要不要查工具、调工具、看结果、再判断要不要继续、最终回答。
 
-**本节小结**：
+下图正好对应这条循环：
 
-| 对象      | 角色        | 举例说明                                      |
-| --------- | ----------- | --------------------------------------------- |
-| **Tool**  | 能力组件    | 做具体事：查数据、跑 Python、调 API 等。      |
-| **Agent** | 大脑/决策者 | 做判断：用哪个 Tool、按什么顺序、怎么组合用。 |
+![ReAct 模式：思考（Thought）→ 行动（Action）→ 观察（Observation）→ 根据结果继续循环或给出最终答案的闭环示意](images/21/21-1-2-1.jpeg)
 
-在 LangChain 里，这套「决策 + 工具」的 Agent 是如何从多步组装演变成一步创建的？下面看版本演变。
+这里还要补一个现实中的重要认知：**现代 Tool Calling Agent 不一定会把“Thought”完整显示给你看。**
+
+很多时候你在代码里真正看到的是：
+
+- `AIMessage` 里出现 `tool_calls`
+- 工具执行后得到 `ToolMessage`
+- 最后再出现一个普通 `AIMessage`
+
+所以在今天的 LangChain / Tool Calling 语境里，ReAct 更应该被理解成一种**工作机制**，而不只是某种固定的 Prompt 模板格式。
+
+**Agent 不只有 ReAct 这一种工作方式。**
+
+ReAct 只是最经典、最适合初学者入门的一种理解方式，因为它最容易让人看懂“为什么 Agent 不只是一次回答”。但在真实项目里，常见的 Agent 形态还包括：
+
+- **Plan-and-Execute**：先整体规划，再按计划逐步执行。
+- **Router / Supervisor**：先判断该把任务交给哪个工具、哪个子 Agent、哪个流程。
+- **Workflow + Agent 混合**：固定部分用工作流，遇到不确定节点时再让 Agent 决策。
+- **Multi-Agent / A2A**：多个 Agent 分工协作，由一个主 Agent 或协调器统筹。
+- **Human-in-the-loop**：关键步骤需要人工确认，Agent 不是全自动闭环。
+
+所以更准确地说：
+
+- **ReAct 是 Agent 最经典的一种工作机制**
+- **不是 Agent 的唯一形态**
+- **本章先用 ReAct 入门，是因为它最容易把 Agent 的核心价值讲清楚**
+
+### 1.3 Tool 与 Agent 的关系
+
+这一节是整章最容易混淆的地方。
+
+**Tool（工具）** 是能力封装。
+
+例如： `get_weather()`、`search_products()`、`check_inventory()`、`book_flight()`。它们都只是“能做一件事”的函数或接口。
+
+**Agent** 则是决策者。
+
+它负责判断：现在要不要调用工具、调哪个工具、先调哪个、后调哪个、一个工具够不够、工具失败了要不要重试或换路线、什么时候可以停止并给最终答案。
+
+所以两者关系可以先记成：**Tool = 能力；Agent = 决策 + 使用这些能力。**
+
+| 对象      | 本质定位 | 一句话理解                         |
+| --------- | -------- | ---------------------------------- |
+| **Tool**  | 能力层   | 我能做什么                         |
+| **Agent** | 决策层   | 我什么时候、按什么顺序去用这些能力 |
+
+也正因为如此，**不是“有 Tool 就有 Agent”**。比如“查一下北京天气”这种一步问题，直接调一个天气工具就够了，完全可以不需要 Agent。
+
+但如果问题变成：
+
+- “帮我找最热门的无线耳机，再查库存，再告诉我哪款可以买”
+- “先订机票，再订酒店，再预约打车”
+- “先查知识库，再看是否需要调外部 API，再整理成报告”
+
+这时就不是某个单独 Tool 能解决的了，而是需要有人负责多步决策，这时 Agent 才有价值。
+
+### 1.4 Agent 的使用场景
+
+这一点结合官方关于 **workflow vs agent** 的区分来理解最清楚。这里的 **workflow**，中文通常可以理解成：**工作流 / 固定流程**。指的是一条**步骤基本提前确定、执行顺序相对稳定**的处理路线，例如先做 A，再做 B，再做 C，中间不太需要模型临场决定“下一步该怎么走”。
+
+所以你可以先把它和 Agent 粗略区分成：**workflow**：流程基本写死，重点是“按既定步骤执行”；**agent**：流程不完全固定，重点是“根据上下文动态决策”。**如果流程路径是固定的，优先考虑工作流 / 链，而不是 Agent。**
+
+比如：
+
+- 固定先做文本切分，再做向量化，再写入向量库
+- 固定先分类，再摘要，再存库
+- 固定按 A → B → C 的顺序执行
+
+这类场景更像 [第 15 章 LCEL 与链式调用](15-LCEL与链式调用.md) 或后续 LangGraph 的**工作流**问题。
+
+**如果下一步怎么做不固定，需要模型根据中间结果动态决定，就更适合 Agent。**
+
+比如：
+
+- 用户问题不确定，需要模型决定先查库还是先调 API
+- 工具很多，模型要自己选哪个
+- 可能要调一次工具，也可能要调很多次
+- 工具返回后还要继续推理
+
+所以更贴近实际项目的判断标准可以写成：
+
+| 场景                                                   | 更适合什么  |
+| ------------------------------------------------------ | ----------- |
+| 路径固定、步骤明确、顺序可提前写死                     | 链 / 工作流 |
+| 路径不固定、工具选择依赖上下文、中间结果会影响后续决策 | Agent       |
+
+这也是为什么今天很多企业项目其实是：**Workflow 负责固定骨架，Agent 负责不确定节点的决策。**
 
 ---
 
 ## 2、演变过程：从多步组装到一步创建
 
-LangChain 中 Agent 的创建方式从 V0.x 的多步配置演进到 V1.0 的 **`create_agent` 一步到位**，底层由 **LangGraph** 图状态机驱动（详见后续 LangGraph 相关章节），调用接口也简化为 `agent.invoke`。
+### 2.1 V0.3 / classic 路线：显式组装 Agent
 
-**流程对比**：
+在较早的 LangChain Agent 写法中，通常要显式准备这些部分：1. 模型；2. 工具列表；3. Prompt 模板；4. `create_tool_calling_agent(...)`；5. `AgentExecutor(...)`。
 
-- **V0.x（旧方式）**：需要按顺序准备好「模型 → 工具 → 提示模板 → 组装成 Agent → 再交给 Executor」，一共 3 ～ 4 步。
-- **V1.0（新方式）**：直接调用 `create_agent(...)` 就能得到一个可用的 Agent，一步完成，背后的编排由 LangGraph 负责。
+也就是说，Agent 本身只负责“出主意、决定调用什么”，真正驱动循环、执行工具、把结果写回上下文的，通常是 **AgentExecutor**。
 
-**差异小结**：
+这一套写法的优点是：结构清楚、很适合教学、容易看懂 Agent 和 Executor 是怎么配合的。
 
-| 维度         | V0.x（旧方式）             | V1.0（新方式）     |
-| ------------ | -------------------------- | ------------------ |
-| **创建步骤** | 3 ～ 4 步                  | 1 步               |
-| **提示词**   | 使用 `PromptTemplate` 对象 | 可直接传简单字符串 |
-| **调用方式** | `executor.invoke`          | `agent.invoke`     |
+它的局限是：代码更长、初学者容易被 Prompt、scratchpad、executor 等概念同时压住、工程上需要手动拼接更多组件。
 
-下图是「第一个智能体组装」的直观示意：**三步**即可完成——**① 定义工具**（如 `tools = [get_weather]`），**② 构建 Prompt**（如 `system_prompt = "You are a helpful assistant."`），**③ 调用 create_agent**（传入 model、tools、system_prompt 得到 `agent`）。图中从左到右的 Tools、Prompt、Model 三个块即这三类输入，最终汇入 `create_agent` 得到可用的智能体；对应上文 V1.0「一步创建」的简化写法。
+仓库里的 `AgentSmartSelectV0.3.py` 就是这条路线的典型案例。
 
-![](images/21/21-2-1-1.jpeg)
+### 2.2 V1.x 路线：create_agent 一步创建
+
+到了 LangChain 1.x，官方更推荐的主线入口是：
+
+```python
+from langchain.agents import create_agent
+```
+
+然后直接把模型、工具、系统提示等交进去，得到一个可运行的 Agent。
+
+这种方式的核心变化不是“Agent 不循环了”，而是：**很多原来要自己显式组装的部分，被封装进了更统一的运行时。**
+
+根据当前官方文档，`create_agent` 背后使用的是**基于 LangGraph 的 graph-based runtime**。这里的 **graph-based runtime**，可以先简单理解成：**Agent 的执行过程不再只是“一次函数调用”，而是由一个基于状态流转的运行框架来驱动。**
+
+你可以把它想成：
+
+- 当前有哪些消息和中间结果，这是**状态**
+- 下一步是继续让模型推理、去调工具，还是结束输出，这是**状态流转**
+- 整个过程像一张“节点 + 连线”的执行图，所以叫 **graph-based**
+
+对初学者来说，这里不用先深入 LangGraph 细节，先抓住一句话就够了：
+
+**`create_agent` 虽然看起来像一步创建，但底层仍然有一套负责“循环、状态、工具调用”的运行时在支撑它。**
+
+这意味着：Agent 仍然在循环，仍然会调工具，仍然会维护消息状态。只是这些动作不再要求你手动拼出一套 `Agent + AgentExecutor + scratchpad` 才能跑。
+
+### 2.3 这两条路线的意义
+
+对你这套教程来说，这两条路线都值得保留，因为它们分别承担不同教学价值：
+
+- **V0.3 / classic 路线**  
+  帮助初学者理解 Agent 内部到底怎么转：Prompt、工具、Executor、循环是怎么配合的。
+
+- **V1.x / `create_agent` 路线**  
+  帮助读者建立“当前官方主线怎么写”的心智，更接近真实项目开发。
+
+所以这一章不是在教你背两个 API，而是在教你：**经典写法怎么看**，**当前写法怎么用**，**二者背后的 Agent 本质其实是同一件事**。
+
+下图就可以把这种“从组件输入到 Agent 创建”的感觉建立起来：
+
+![三步组装智能体示意：① 定义工具（如 `tools = [get_weather]`）② 构建系统提示 ③ 调用 `create_agent(model, tools, system_prompt)` 将 Tools / Prompt / Model 收口为可运行 Agent](images/21/21-2-1-1.jpeg)
+
+### 2.4 V0.3 与 V1.x 的对比速览
+
+| 维度       | V0.3 / classic                                | V1.x / `create_agent`  |
+| ---------- | --------------------------------------------- | ---------------------- |
+| 核心入口   | `create_tool_calling_agent` + `AgentExecutor` | `create_agent`         |
+| 代码组织   | 手动拼更多组件                                | 统一入口更简洁         |
+| 学习价值   | 更容易看清内部结构                            | 更接近当前官方主线     |
+| 运行时心智 | Agent 决策，Executor 驱动循环                 | graph runtime 驱动循环 |
+| 更适合     | 理解原理、维护旧案例                          | 新项目、快速搭建       |
+
+还有一个实践上很重要的补充：
+
+**当前官方 1.x 文档更强调以 `messages` 状态作为 Agent 的统一输入。**但本教程仓库中为了教学连续性，仍保留了部分 `{"input": "..."}` 风格示例。读代码时不用慌，先抓住大意：**本质上都是在给 Agent 一个“新的用户请求”**，只是不同版本、不同适配层的调用入口略有差异。
 
 ---
 
 ## 3、Agent 工作原理（V0.3）
 
-在 LangChain 的 Agent 架构中，**Agent** 负责「接收输入并决定采取什么操作」，**不直接执行**这些操作；**AgentExecutor** 负责真正调用 Agent、执行其选定的工具，并把工具输出传回 Agent，形成循环，二者结合才构成完整的智能体。
+这一节聚焦本教程里的 classic 路线，因为它最适合拆开理解 Agent 的内部工作机制。
 
-![](images/21/21-3-1-1.jpeg)
+### 3.1 为什么还要学 V0.3
 
-> **说明**：**AgentExecutor** 实际调用 Agent、执行 Agent 选择的操作，并将操作输出传回 Agent 再重复。左侧为 Agent 接收的信息类型（Input、Model Response、History）；中间为 Agent 链（Prompt Template + LLM + output parser）决定下一步；右侧为 Agent 可调用的工具集（Tool 1…Tool n）。
+虽然今天新项目更常直接用 `create_agent`，但 classic 路线依然很有学习价值。因为它能让你真正看清楚：Agent 自己负责什么，AgentExecutor 负责什么，为什么 Prompt 里要有 `agent_scratchpad`，工具结果是怎么“再喂回去”给模型继续推理的。这对理解 Agent 非常重要。
 
-**工作流程可概括为：**
+### 3.2 Agent 与 AgentExecutor 的职责分工
 
-1. **输入解析**：语言模型分析用户输入，理解任务目标。
-2. **推理规划**：使用 ReAct 等框架决定是否调用工具、调用哪些、顺序如何；ReAct 即在每次迭代中先「推理」再「行动」。
-3. **工具调用**：按规划调用工具，传入参数并获取结果，将结果反馈给语言模型。
-4. **迭代推理**：模型根据工具结果更新推理，可能再次调用工具，直到满足终止条件。
-5. **生成最终答案**：模型综合所有信息，生成面向用户的最终回复。
+在 V0.3 / classic 路线下，可以把它理解成：
 
-**对应案例**：下面用「多城市天气比较」的完整代码对照上述流程——模型 + 工具 + 提示模板 → `create_tool_calling_agent` 得到 Agent → 用 `AgentExecutor` 执行并循环。
+- **Agent**：负责分析输入、决定下一步动作
+- **AgentExecutor**：负责执行动作、拿结果、继续驱动循环
+
+也就是说：**Agent 更像大脑，AgentExecutor 更像执行器和循环调度器。**这也是为什么单独有 Agent 通常还不够，还要再交给 Executor 去跑。
+
+下图正好适合理解这一点：
+
+![AgentExecutor 工作流示意：左侧为消息流（Input、模型回复、History）；中间为 Agent 链（Prompt、LLM、输出解析）决定下一步；右侧为可调用的 Tool 1…n，执行结果回传并形成循环直至结束](images/21/21-3-1-1.jpeg)
+
+### 3.3 agent_scratchpad 重要性
+
+你在 classic 路线里经常会看到 Prompt 里有这样一个占位：
+
+```python
+("placeholder", "{agent_scratchpad}")
+```
+
+其中 `ChatPromptTemplate`、占位符与消息结构，与 [第 13 章 提示词与消息模板](13-提示词与消息模板.md) 一脉相承；这里多出来的 `{agent_scratchpad}` 专供多轮工具循环使用。
+
+这不是装饰，它的作用非常关键。它相当于 Agent 的“草稿区 / 中间步骤区”，用来承接：
+
+- 模型上一轮决定调用什么工具
+- 工具返回了什么
+- 下一轮模型基于这些信息继续推理
+
+如果没有这块区域，模型就很难在多步循环里“记住刚刚自己做过什么”。
+
+所以在 classic 路线里，`agent_scratchpad` 不是一个边角知识点，而是 **ReAct 循环能成立的重要拼图**。
+
+### 3.4 结合案例理解
 
 【案例源码】`案例与源码-2-LangChain框架/12-agent/AgentSmartSelectV0.3.py`
 
 [AgentSmartSelectV0.3.py](案例与源码-2-LangChain框架/12-agent/AgentSmartSelectV0.3.py ":include :type=code")
 
+这个案例非常适合拿来理解 classic Agent 的完整链路，因为它把这些部分都摆出来了：
+
+1. 定义 `get_weather` 工具
+2. 定义 `ChatPromptTemplate`
+3. 在 Prompt 里保留 `agent_scratchpad`
+4. 用 `create_tool_calling_agent` 得到 Agent
+5. 用 `AgentExecutor` 驱动执行
+
+当用户问：请问今天北京和上海的天气怎么样，哪个城市更热？
+
+这个案例里的 Agent 并不是“一次回答完”，而是更像这样：
+
+1. 先判断需要查天气
+2. 调一次 `get_weather(Beijing)`
+3. 再调一次 `get_weather(Shanghai)`
+4. 根据两次工具结果做比较
+5. 最后输出总结
+
+所以它真正演示的不是“天气查询”，而是：**一个 classic Agent 如何做多步工具调用，并把多次结果汇总成最终回答。**
+
 ---
 
 ## 4、Agent 工作原理（V1.0）
 
-V1.0 通过 `create_agent` 将模型、工具、系统提示等封装在一起，使用方式更简洁，底层仍遵循「推理 → 行动 → 反馈」的循环。
+这一节对应当前官方主线，也就是你项目里更现代的 Agent 入口。
 
-**统一创建方式**：从 `langchain.agents` 引入 `create_agent`，一次调用即可完成配置。
+### 4.1 create_agent 的意义
 
-**基础用法**——只需指定模型、工具和系统提示：
+`create_agent` 的最大价值不是“少写几行代码”，而是：**把 Agent 的常见配置收口到一个统一入口里。**
 
-```python
-from langchain.agents import create_agent
+你通常会把这些东西交给它：模型，工具，系统提示，有时再加结构化输出、状态、中间件等。这样你可以更专注于业务目标，而不是一开始就陷进大量底层组装细节里。
 
-agent = create_agent(
-    model="gpt-40",                              # 用哪个大模型
-    tools=[search_tool, calculator_tool],        # 给 Agent 哪些工具
-    system_prompt="You are a helpful assistant"  # 系统提示，定义角色
-)
-```
+### 4.2 V1.x 的核心输入
 
-**完整配置**——需要更细控制时，还可以传入输出格式、中间件和上下文结构：
+对初学者来说，`create_agent` 常见参数里最值得先记住的是下面 6 个：
 
-```python
-agent = create_agent(
-    model="gpt-40",                    # 统一的模型配置
-    tools=[search_tool, calculator],  # 统一的工具配置
-    system_prompt="Assistant",         # 统一的提示词配置
-    response_format=structured_output, # 统一的输出配置（如结构化输出）
-    middleware=[custom_middleware],    # 统一的扩展配置（中间件）
-    context_schema=UserContext         # 统一的上下文信息（如用户信息结构）
-)
-```
+| 参数              | 是否常见     | 作用                                         |
+| ----------------- | ------------ | -------------------------------------------- |
+| `model`           | 必备         | 让谁来做推理与决策                           |
+| `tools`           | 很常见       | 给 Agent 哪些可调用能力                      |
+| `system_prompt`   | 很常见       | 约束 Agent 的角色、风格和工作规则            |
+| `response_format` | 很常见       | 让最终结果更适合结构化输出                   |
+| `checkpointer`    | 进阶但很重要 | 保存运行状态，可支撑短期记忆                 |
+| `middleware`      | 进阶但很重要 | 在模型调用、工具调用等阶段插入自定义控制逻辑 |
 
-也就是说：V1.0 把「模型、工具、提示、输出、扩展、上下文」都收口到 `create_agent` 一个接口里，按需传参即可。
+如果把它们翻译成更贴近项目开发的话，可以理解成：
 
-**对应案例**：同一业务「多城市天气比较」用 V1.0 实现——直接 `create_agent(model, tools, system_prompt, response_format=...)` 得到 agent，再 `agent.invoke({"input": "..."})` 即可；无需手写 Prompt 模板和 AgentExecutor。
+- `model`：模型能力怎么选
+- `tools`：Agent 可以用哪些外部能力
+- `system_prompt`：行为规则怎么约束
+- `response_format`：输出要不要便于程序直接接收
+- `checkpointer`：跨多轮调用时，状态和短期记忆怎么保留
+- `middleware`：要不要加入守护、拦截、动态控制
+
+其中前四个最适合先入门；后两个更偏工程化能力。
+
+### 4.3 结构化输出在 Agent 中的理解
+
+本教程里的 V1.0 案例保留了一个很有价值的知识点：**Agent 不一定只能返回自然语言，它也可以返回结构化结果。**这在实际项目里非常重要。因为很多时候我们不是只想“让模型说一段话”，而是希望它最终给出：JSON、TypedDict、Pydantic 对象、便于程序直接消费的字段结构。
+
+官方文档也把 `response_format` 作为 `create_agent` 的重点能力之一。所以你可以把这个能力理解成：**Agent 不只是会调用工具，它还可以把最终答案整理成程序更容易接收的格式。**
+
+在当前 1.x 文档语境里，`response_format` 常见有三种理解方式：
+
+- **直接传 schema 类型**：例如 `TypedDict`、Pydantic 模型，框架会按模型能力自动选择更合适的结构化输出策略。
+- **显式 `ProviderStrategy(schema)`**：当底层模型原生支持结构化输出时，更贴近 provider 原生能力。
+- **显式 `ToolStrategy(schema)`**：把结构化输出当成一次工具调用式约束，兼容性通常更好。
+
+对初学者来说，你先记住一句话就够了：**`response_format` 不是“把字符串转 JSON”的后处理，而是在 Agent 最终输出阶段，把“结果长什么样”提前约束清楚。**
+
+### 4.4 checkpointer、thread_id 与短期记忆
+
+这部分在很多教程里容易一带而过，但它其实很重要。如果你给 `create_agent` 传入 `checkpointer`，底层运行时就可以把 Agent 的状态保存下来。这时 Agent 不再只是“当前这一轮问什么答什么”，而是可以在多轮调用之间保留上下文。
+
+这里可以先把三个词对应起来：
+
+- **checkpointer**：状态保存器，负责把运行过程中的状态记下来
+- **thread_id**：一次会话或一条对话线程的标识
+- **短期记忆**：在同一个 `thread_id` 下，多轮消息和状态能够被延续使用
+
+所以可以先记成一句话：**checkpointer 决定“状态能不能存下来”，thread_id 决定“这些状态属于哪一条会话”。**
+
+这一点和 [第 16 章 记忆与对话历史（含Redis基础）](16-记忆与对话历史（含Redis基础）.md) 是连着的。第 16 章更偏“记忆是什么、怎么存历史消息”，而这里更偏“在 `create_agent` 这条 1.x 主线上，状态和短期记忆是怎么接进 Agent 运行时的”。
+
+### 4.5 运行过程怎么观察：stream 与 LangSmith
+
+在真实项目里，只会 `invoke()` 还不够，因为 Agent 往往不是一步完成的。
+
+#### 4.5.1 stream() 为什么重要
+
+如果 Agent 要经历：模型判断、工具调用、工具返回、再次判断、最终输出。那么直接 `invoke()` 往往要等到最后才看到结果。而 `stream()` 的价值就在于：**把中间进展实时暴露出来。**
+
+这对实际项目非常有用，因为它能帮助你：
+
+- 看到 Agent 到底卡在模型还是工具上
+- 看到是否发生了多轮工具调用
+- 给前端提供更好的交互体验
+- 调试“为什么这次 Agent 没按预期走”
+
+所以可以先把它理解成：`invoke()` 更像等最终结果，`stream()` 更像看 Agent 执行过程。
+
+#### 4.5.2 LangSmith 为什么常和 Agent 一起出现
+
+Agent 的问题，往往不是“有没有报错”这么简单，而是：
+
+- 为什么调了这个工具而不是那个
+- 为什么多调了一轮
+- 为什么结构化输出没按预期生成
+- 为什么这一步耗时特别长
+
+这类问题只看最后一句回答，通常是不够的。也是为什么官方文档会把 **LangSmith** 和 Agent 经常放在一起讲。你可以把 LangSmith 先理解成：**用于追踪、调试、测试、评估 Agent 运行过程的可观测平台。**
+
+对初学者来说，这里不用立刻深入平台细节，只要先知道：`stream()` 让你在代码层面看到过程，**LangSmith** 让你在可视化层面看到过程，两者都非常适合 Agent 开发。
+
+### 4.6 结合案例理解
 
 【案例源码】`案例与源码-2-LangChain框架/12-agent/AgentSmartSelectV1.0.py`
 
 [AgentSmartSelectV1.0.py](案例与源码-2-LangChain框架/12-agent/AgentSmartSelectV1.0.py ":include :type=code")
 
-**V0.3 与 V1.0 对比小结**（结合上面两段源码）：
+这个案例和 V0.3 做的是同一类业务：都是围绕“北京和上海谁更热”来调用天气工具。
 
-| 维度           | V0.3（AgentSmartSelectV0.3.py）                                                                                                                             | V1.0（AgentSmartSelectV1.0.py）                                                                      |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **创建方式**   | 先 `ChatPromptTemplate.from_messages` 建提示，再 `create_tool_calling_agent(llm, tools, prompt)` 得到 agent，最后 `AgentExecutor(agent=agent, tools=tools)` | 直接 `create_agent(model=model, tools=[...], system_prompt=..., response_format=...)` 一步得到 agent |
-| **提示词**     | 必须用 `PromptTemplate` 对象，且需包含 `("placeholder", "{agent_scratchpad}")`                                                                              | 传字符串即可（如 `system_prompt="你是天气助手..."`）                                                 |
-| **执行与调用** | 用 `agent_executor.invoke({"input": "..."})`，Executor 内部循环调 Agent + 执行工具                                                                          | 用 `agent.invoke({"input": "..."})`，底层由 LangGraph 等负责循环                                     |
-| **输出形态**   | 返回字典中含 `output` 等，无内置结构化 schema                                                                                                               | 可传 `response_format=TypedDict`，返回中含 `structured_response`，便于程序化处理                     |
-| **代码量**     | 需显式写 prompt、agent、executor 三块，步骤多                                                                                                               | 一段 `create_agent` 即可，步骤少                                                                     |
+但它的教学重点已经变了，不再强调 Prompt + Executor 的手工组装，而是在强调：
 
-二者业务一致（多工具天气比较），可对比运行体会「多步组装」与「一步创建」的差异。
+- `create_agent(...)` 的统一创建方式
+- `response_format` 带来的结构化输出
+- V1.x Agent 的更简洁用法
+
+所以读这个案例时，建议把关注点放在两件事上：
+
+1. **为什么代码明显更短了**
+2. **为什么最后可以直接拿到 `structured_response`**
+
+这两点正好代表了 V1.x 路线的两个现实价值：
+
+- 更适合新项目快速搭建
+- 更适合把 Agent 输出接进后端业务逻辑
+
+另外，虽然本教程里的 `AgentSmartSelectV1.0.py` 重点放在 `invoke()` 和结构化输出上，但如果放到真实项目里，你通常还会继续关心：
+
+- 要不要用 `stream()` 展示中间进展
+- 要不要用 `checkpointer` 保留短期记忆
+- 要不要通过 `middleware` 做动态控制和守护
+
+这也是为什么 `create_agent` 看起来只是一个函数，背后却能一路延展到更完整的 Agent 工程化能力。
+
+### 4.7 V0.3 与 V1.x 结合案例对比
+
+总体差异已在上文 **2.4 节（V0.3 与 V1.x 对比速览）** 从 API 与运行时角度概括过；下表仅对照本仓库**同一业务（双城气温比较）**下的两个文件，便于你并排阅读代码。
+
+| 维度     | `AgentSmartSelectV0.3.py`               | `AgentSmartSelectV1.0.py`            |
+| -------- | --------------------------------------- | ------------------------------------ |
+| 教学重点 | 看懂 Agent + Executor 怎么配合          | 看懂 `create_agent` 统一入口         |
+| 代码风格 | 显式组装                                | 一步创建                             |
+| 中间机制 | `agent_scratchpad`、Executor 循环更明显 | 运行时被更高层封装                   |
+| 输出重点 | 最终自然语言回答                        | `structured_response` 更适合程序处理 |
+
+一句总结：**V0.3 更适合理解“Agent 是怎么转起来的”，V1.x 更适合理解“今天项目里通常怎么写”。**
 
 ---
 
 ## 5、实操与案例
 
-在理解 **3、4 节** 的 V0.3 / V1.0 原理后，本节通过三个**实操案例**巩固不同形态的 Agent：**单 Agent 多步调工具（ReAct）**、**多 Agent 协作（A2A）**、**工具来自 MCP 的 Agent**。每个案例的源码中都蕴含重要知识点，建议先看本节知识点说明再对照代码运行，最后用文末对比表串联理解。
+前面 3、4 节已经把两条 Agent 主线讲清楚了，这一节把所有案例重新放回到清晰的位置里。
 
-**三个案例的定位对比**（便于先建立整体印象）：
+### 5.1 全部案例先建立一张总览表
 
-| 案例               | 核心知识点                                                   | 工具从哪来                          | Agent 形态                       |
-| ------------------ | ------------------------------------------------------------ | ----------------------------------- | -------------------------------- |
-| **AgentReact**     | ReAct 循环、多步决策、messages 中的 tool_calls / ToolMessage | 本地 `@tool` 定义                   | 单个 Agent，自主选工具、多轮调用 |
-| **Agent2Agent**    | 子 Agent 链、总协调、`bind_tools`、Runnable 组合             | 本地 `@tool`，每个子 Agent 只绑一个 | 多个子 Agent + 一个总协调 Agent  |
-| **McpClientAgent** | mcp.json、MultiServerMCPClient、get_tools、异步 session      | MCP 服务（mcp.json 配置）           | 单个 Agent，工具列表来自 MCP     |
+| 案例                      | 主要学习点                         | 工具来自哪里 | 更适合放在什么语境里理解 |
+| ------------------------- | ---------------------------------- | ------------ | ------------------------ |
+| `AgentSmartSelectV0.3.py` | classic Agent + AgentExecutor      | 本地 `@tool` | 理解 Agent 内部工作机制  |
+| `AgentSmartSelectV1.0.py` | `create_agent` + 结构化输出        | 本地 `@tool` | 理解当前 1.x 主线        |
+| `AgentReact.py`           | ReAct 循环、多步工具调用、消息轨迹 | 本地 `@tool` | 理解 Agent 的动态决策    |
+| `Agent2Agent.py`          | 多智能体协作 / A2A                 | 本地 `@tool` | 理解多角色分工           |
+| `McpClientAgent.py`       | Agent + MCP 工具接入               | MCP 服务     | 理解外部工具接入         |
 
----
+也就是说，这一章不是在用 5 个案例重复讲一件事，而是在从 5 个不同角度，把 Agent 的完整能力拼出来。
 
-### 5.1 ReAct 实操：单 Agent 多步选工具
-
-**知识点**：
-
-- **ReAct 含义**：Reason + Act，即「先推理再行动」。Agent 根据用户问题**自主决定**调用哪个工具、调用几次、顺序如何；每轮先产生「思考」，再输出 `tool_calls`，执行后得到 **Observation**，再决定继续调工具或给出最终答案。
-- **消息结构**：源码中通过 **`result['messages']`** 可看到完整对话：AIMessage（含 `tool_calls`）、ToolMessage（工具返回）、以及最终的 AIMessage（文本回答），对应教程 1 节中的 ReAct 四步循环。
-- **与 3、4 节对比**：3、4 节的「工具+判断」多为「一次问题 → 一次或少数几次固定工具调用」；ReAct 强调**多步、有条件分支**的决策（如先搜索再查库存，再根据结果决定是否继续）。
+### 5.2 ReAct 实操
 
 【案例源码】`案例与源码-2-LangChain框架/12-agent/AgentReact.py`
 
 [AgentReact.py](案例与源码-2-LangChain框架/12-agent/AgentReact.py ":include :type=code")
 
+这个案例非常适合用来建立“**Agent 会自己连续做多步决策**”的直觉。
+
+它定义了两个工具：
+
+- `search_products`
+- `check_inventory`
+
+用户的问题不是简单的“查某个 ID 是否有库存”，而是：查找当前最受欢迎的无线耳机并检查是否有库存。
+
+这个问题天然要求两步：
+
+1. 先搜索产品，找出哪个最热门
+2. 再根据搜索结果，决定去查哪个产品的库存
+
+这里最关键的地方不是工具本身，而是：**第二步依赖第一步的结果。**  
+这就是 Agent 价值所在。如果没有 Agent，你就要手工写死流程；有了 Agent，模型可以根据第一步返回内容，自主决定下一步调什么。
+
+这个案例还有一个很值得保留的学习点：它会展示 `result["messages"]`，让你看到：`AIMessage`、`tool_calls`、`ToolMessage`、最终 `AIMessage`。
+
+所以这个案例不仅适合学 ReAct，也适合学：**现代 Agent 在消息层面到底长什么样。**
+
 ---
 
-### 5.2 A2A 实操：多智能体协作与总协调
-
-本小节对应**美团酒旅事业部**的真实业务场景：多智能体协作与总协调。
-
-**知识点**：
-
-- **A2A 含义**：Agent-to-Agent，即**多个 Agent 各司其职、由一个总协调 Agent 调度**。本案例中：携程只订机票、美团只订酒店、滴滴只打车，总协调按业务顺序调用并汇总。
-- **子 Agent 实现**：每个子 Agent 只绑定**一个** `@tool`，子链为 **Prompt | llm.bind_tools([单个工具]) | output_parser** 的 **Runnable 链**；总协调用 **RunnableLambda** 封装「按序 invoke 子链、空结果时用工具 `.func` 兜底」的逻辑。
-- **规范要点**：子 Agent **单一职责**、对外统一 `invoke({"input": "..."})`；工具用 **`@tool(名称, description=...)`** 并写清参数，便于模型正确传参。
-- **与 ReAct 对比**：ReAct 是**一个** Agent 面对**多个**工具自行选择；A2A 是**多个** Agent 各管一个工具，由**总协调**决定调用顺序与汇总方式。
+### 5.3 A2A 实操
 
 【案例源码】`案例与源码-2-LangChain框架/12-agent/Agent2Agent.py`
 
 [Agent2Agent.py](案例与源码-2-LangChain框架/12-agent/Agent2Agent.py ":include :type=code")
 
+这个案例对应的是多智能体协作，也就是常说的 **A2A（Agent-to-Agent）**。
+
+它的教学价值非常高，因为它把“一个 Agent 解决所有问题”换成了另一种思路：
+
+- 携程 Agent 只负责机票
+- 美团 Agent 只负责酒店
+- 滴滴 Agent 只负责打车
+- 最上面再有一个总协调逻辑负责调度
+
+这和真实项目非常贴近。因为很多企业级系统里，往往不是“一个大而全的 Agent”，而是：
+
+- 一个总入口
+- 多个领域专长子 Agent
+- 各自有边界
+- 最后再汇总结果
+
+这里还要补一个和官方文档对齐的重要认知：**官方多智能体资料里，常见做法是把 subagent 包装成 tool，再交给主 Agent 调用。**
+
+而本教程里的这个案例，使用的是：
+
+- 子 Agent 链
+- `RunnableLambda` 协调
+- 显式顺序调度
+
+这不是错误，而是另一种更适合教学的表达方式。它的好处是你可以更清楚地看到：
+
+- 子 Agent 如何单一职责
+- 总协调如何串联业务顺序
+- A2A 不一定非要从“主 Agent 调子 Agent 工具”这一个套路入门
+
+所以这个案例更适合初学者建立的心智是：**多智能体协作的重点不是 API 长什么样，而是“分工 + 协调”。**
+
 ---
 
-### 5.3 Agent + MCP 实操：工具来自 MCP 服务
-
-**知识点**：
-
-- **工具来源**：前面案例的工具都是本进程内 **`@tool`** 定义；本案例演示**工具从 MCP 服务来**——从同目录 **mcp.json** 读取服务配置，用 **MultiServerMCPClient** 连接多台 MCP 服务器，通过 **`get_tools()`** 拿到 LangChain 可用的工具列表，再交给 **create_tool_calling_agent + AgentExecutor**，形成「LLM + MCP 工具」的对话 Agent。
-- **流程要点**：<strong>load_servers(mcp.json) → MultiServerMCPClient(connections) → async with client.session(): tools = client.get_tools()</strong>，之后与 3 节的 V0.3 用法一致（Prompt + agent + executor + 聊天循环）。
-- **与本地 @tool 对比**：工具**定义与运行**在 MCP 服务端，客户端只负责「按协议发现并调用」，便于多应用复用、跨进程部署。mcp.json 写法见 [第 20 章](20-MCP模型上下文协议.md)。
+### 5.4 Agent + MCP 实操
 
 【案例源码】`案例与源码-2-LangChain框架/11-mcp/McpClientAgent.py`
 
 [McpClientAgent.py](案例与源码-2-LangChain框架/11-mcp/McpClientAgent.py ":include :type=code")
 
----
+这一节非常重要，因为它把第 20 章 MCP 和本章 Agent 真正接上了。前面几个案例里的工具，基本都是当前进程里直接写的 `@tool`。而这个案例演示的是另一件更接近真实项目的事：**工具不一定定义在本地代码里，也可以来自外部 MCP 服务。**
 
-**三案例对照小结**（便于串联理解）：
+它的大致链路是：
 
-| 维度           | AgentReact                                     | Agent2Agent                               | McpClientAgent                                                        |
-| -------------- | ---------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------- |
-| **Agent 数量** | 1 个                                           | 多个子 Agent + 1 个总协调                 | 1 个                                                                  |
-| **工具来源**   | 本地 `@tool`                                   | 本地 `@tool`，每子 Agent 一个             | MCP 服务（mcp.json + get_tools）                                      |
-| **决策方式**   | 单 Agent 自主多步选工具                        | 总协调按序调子链，子 Agent 只执行绑定工具 | 单 Agent 自主选工具（工具来自 MCP）                                   |
-| **调用入口**   | create_agent / agent.invoke 或 executor.invoke | 总协调 chain.invoke                       | create_tool_calling_agent + AgentExecutor，async session 内 get_tools |
-| **典型场景**   | 问答 + 多步检索/查库                           | 多环节流水线（订票 → 酒店 → 用车）        | 多服务工具统一接入、对话式使用                                        |
+1. 读取 `mcp.json`
+2. 用 `MultiServerMCPClient` 连接 MCP 服务
+3. 获取 MCP 暴露出来的工具列表
+4. 把这些工具交给 LangChain Agent
+5. 让 Agent 在对话中继续像本地 Tool 一样使用它们
+
+所以这个案例真正学的不是“怎么聊天”，而是：**Agent 的工具来源可以被标准化外置。**
+
+这在实际项目里意义很大，因为很多企业系统都会走这条路线：
+
+- 能力由后端团队封装成 MCP 服务
+- Agent 侧只负责接入和使用
+- 这样一个工具集可以被多个 AI 应用复用
+
+也正因为如此，本章和 [第 20 章 MCP 模型上下文协议](20-MCP模型上下文协议.md) 是强关联的：第 20 章解决“工具怎么标准化暴露”，第 21 章解决“Agent 怎么把这些能力真正用起来”。
 
 ---
 
 ## 6、小结：Agent、Tool、Function Calling、RAG、MCP 的区别与联系
 
-学完 Agent 与 MCP 后，容易混淆的几个概念可以这样区分和串联。
+这是本章最后必须收口的一节，因为这些概念最容易混。
 
-**速览表**
+> **术语约定：** 为和前文保持一致，本章这里写 **Function Calling** 是因为它在很多官方资料里仍然常见；如果你更习惯 [第 17 章](17-Tools工具调用.md) 的说法，也可以直接把它理解成 **Tool Calling 这层调用机制**。
 
-| 概念                 | 主要作用     | 一句话                                                                       |
-| -------------------- | ------------ | ---------------------------------------------------------------------------- |
-| **Tool**             | 能力的封装   | 一个可调用的函数（如查天气、搜库），大模型能「用」的原子能力                 |
-| **Function Calling** | 调用的机制   | 大模型「决定调哪个函数、传什么参数」并解析返回的底层能力                     |
-| **RAG**              | 上下文的增强 | 通过检索把相关文档/知识注入 prompt，让大模型「看到」更多信息，不涉及调用函数 |
-| **MCP**              | 连接的协议   | 规定工具/数据源如何暴露、如何被发现的标准化协议，解决「从哪连、怎么连」      |
-| **Agent**            | 决策与编排   | 负责何时用哪个 Tool、按什么顺序、何时结束，是「用」Tool/RAG 的决策层         |
+### 6.1 一张总表先记住
 
-**区别与联系**
+| 概念                 | 它解决什么问题                      | 一句话理解   |
+| -------------------- | ----------------------------------- | ------------ |
+| **Tool**             | 系统有哪些可调用能力                | 能力层       |
+| **Function Calling** | 模型怎么把“调工具”表达出来          | 调用机制     |
+| **RAG**              | 模型缺知识时怎么拿上下文            | 上下文增强   |
+| **MCP**              | 工具 / 资源 / Prompt 怎么标准化接入 | 连接协议     |
+| **Agent**            | 什么时候用什么能力、按什么顺序做    | 决策与编排层 |
 
-- **Tool 与 Function Calling**：**Tool** 是「被调用的东西」（能力单元），**Function Calling** 是「怎么调用」——模型根据输入输出 `tool_calls`，运行时执行对应 Tool 并把结果塞回对话。没有 Tool 就没有可调对象；没有 Function Calling，模型就无法按规范发起调用。二者通常一起出现：用 `@tool` 定义 Tool，用 `bind_tools` 等把 Tool 列表交给模型，模型通过 Function Calling 决定调谁、传什么参数。
+### 6.2 在真实项目里怎么配合
 
-- **RAG 与 Tool**：**RAG** 解决「知识不足」——给模型更多**上下文**（检索到的文档），模型在生成时参考这些内容。**Tool** 解决「能力不足」——让模型能执行**动作**（查 API、写库、发邮件等）。一个补「输入」，一个补「能力」；Agent 可以先用 RAG 拿到相关知识，再决定是否调 Tool、调哪个。
+一个更接近真实项目的完整链路通常像这样：
 
-- **MCP 与 Tool**：**Tool** 是能力的抽象（本地一个 `@tool` 函数即一个 Tool）。**MCP** 是「工具从哪里来、如何对接」的**协议层**——工具可以来自本进程手写的 `@tool`，也可以来自远程/另一进程的 MCP 服务（通过 mcp.json 配置、MultiServerMCPClient 获取）。MCP 不替代 Tool，而是让「工具集」可以按标准从多处接入、被多应用复用。
+1. 用户提出一个目标
+2. **Agent** 先判断该怎么做
+3. 如果缺知识，就先走 **RAG**
+4. 如果缺动作能力，就通过 **Function Calling** 去调 **Tool**
+5. 这些 Tool 可能是本地写的，也可能来自 **MCP**
+6. Agent 再根据返回结果继续判断，直到最终完成任务（需设好迭代上限与超时，避免死循环）
 
-- **Agent 与其余四者**：**Agent** 是**决策与编排**角色：根据用户意图和当前状态，决定是否调 Tool、调哪个、按什么顺序，必要时结合 RAG 检索结果再决策。Tool / Function Calling / RAG / MCP 都是 Agent 可用的**基础设施**——Agent 通过 Function Calling 去调 Tool（Tool 可能来自本地或 MCP），并可能先通过 RAG 扩充上下文再行动。关系可简写为：**Agent = 决策层；Tool = 能力层；Function Calling = 调用机制；RAG = 上下文增强；MCP = 工具/服务的连接协议。**
+所以关系可以简写成：
 
-**在应用中的配合**
-
-- 典型链路：用户提问 → **Agent** 规划 → 若需外部知识则用 **RAG** 检索 → 若需执行动作则通过 **Function Calling** 调 **Tool**（Tool 可能由 **MCP** 服务提供）→ 拿到结果后 Agent 继续推理或给出最终回答。第 20 章讲 MCP 的配置与客户端，本章讲 Agent 如何与 Tool/ReAct/MCP 结合，二者配合即可搭出「LLM + 检索 + 多源工具」的完整智能体。
+- **Agent = 决策层**
+- **Tool = 能力层**
+- **Function Calling = 调用机制**
+- **RAG = 上下文增强**
+- **MCP = 外部能力接入协议**
 
 ---
 
+**章节思考题：**
+
+1. 为什么说 Agent 更像“决策层”，而不是“工具层”？
+
+   **答案：** 因为 Agent 的核心不是提供某个具体能力，而是决定下一步该做什么、要不要调工具、调完后是否继续推理。工具是手脚，Agent 是负责判断和调度的大脑。
+
+2. classic 路线和 `create_agent` 路线最大的学习价值差别是什么？
+
+   **答案：** classic 路线更适合理解 AgentExecutor、scratchpad、多步工具循环这些底层机制，也能帮助你读懂旧项目；`create_agent` 路线更贴近 LangChain 1.x 官方主线和现阶段实战开发。前者偏机制理解，后者偏直接落地。
+
+3. `response_format`、`checkpointer`、`thread_id` 在 1.x Agent 里分别解决什么问题？
+
+   **答案：** `response_format` 用来约束 Agent 最终输出结构，`checkpointer` 用来持久化线程状态，`thread_id` 用来标识并隔离不同对话线程。三者分别对应结果格式、状态保存和会话身份。
+
+4. 面对一个新需求时，你会如何判断它更适合用固定 LCEL 工作流，还是更适合交给 Agent 来自主决定步骤？
+
+   **答案：** 如果步骤固定、路径可预先定义、结果可控性要求高，我会优先用 LCEL 或工作流；如果任务需要根据上下文临场判断、动态选工具、路径不固定，我才会考虑 Agent。判断标准就是“流程是否确定”和“是否真的需要自主决策”。
+
+5. 如果你要设计一个可上线的最小 Agent，你会优先补哪些安全边界和工程能力，而不是只让它“能调工具”？
+
+   **答案：** 我会优先补权限控制、工具白名单、参数校验、人审或二次确认、超时重试、审计日志和状态持久化。一个能上线的 Agent，不是只会调工具，而是出了错也能被限制、追踪和恢复。
+
 **本章小结：**
 
-- **Agent** 是**决策层**，负责何时调哪个 [Tool](17-Tools工具调用.md)、如何组合多步；**Tool** 是**能力层**，只提供可调用函数。二者结合形成「推理 + 行动」的 ReAct 循环，由 **AgentExecutor**（或 V1.0 的 `create_agent`）驱动执行。
-- LangChain 中 Agent 从 V0.x 的多步组装演进到 V1.0 的 `create_agent` 一步创建，底层由 **LangGraph** 支撑；结合本节「Agent、Tool、Function Calling、RAG、MCP 的区别与联系」可更好把握智能体与工具链的定位。
+- **Agent 的核心定位是决策层**：它不是多几个 API，也不是多几个 Tool，而是让系统围绕目标去判断下一步做什么、要不要调工具、工具结果回来后是否继续。Tool 是能力层，Agent 是协调这些能力的执行与决策层。
+- **理解 Agent 最稳的办法，是把它放回 ReAct 循环里看**：观察问题、决定动作、调用工具、拿回观察结果、继续决策。这样再去看 classic 路线里的 scratchpad / AgentExecutor，以及 1.x 路线里的 `create_agent`，就不会只剩 API 记忆。
+- **LangChain 1.x 的主线要抓住三个工程点**：`response_format` 负责把最终输出结构化，`checkpointer` 负责线程状态持久化，`thread_id` 负责多轮对话和会话隔离。它们共同决定 Agent 能不能从“演示能跑”走向“系统可用”。
+- **什么时候不该上 Agent 也要明确**：如果步骤固定、路径稳定、可控性要求高，优先用 LCEL 或 Workflow；只有当任务真的需要动态选工具、临场分解步骤、边执行边调整时，Agent 才值得它带来的复杂度。
+- **可上线的 Agent，重点在边界而不只是能力**：工具白名单、参数校验、人审或二次确认、超时重试、日志与状态持久化，往往比“再多接几个 Tool”更重要。
+- 从掌握结果看，学完本章后，你至少应该：能用“**Agent = 决策层**”概括 Agent 的定位，并把它和 Tool、RAG、MCP、Workflow 分层理解；知道 LangChain Agent 的两条主线：**classic 路线** 和 **`create_agent` + LangGraph runtime 路线**；理解 `response_format`、`checkpointer`、`thread_id` 这些 1.x 时代很关键的工程化能力，并知道什么时候该用 Agent、什么时候不该用。
 
-**建议下一步：** 在本地依次运行 `AgentSmartSelectV0.3.py`、`AgentSmartSelectV1.0.py`、`AgentReact.py` 和 `Agent2Agent.py`，对照文档理解 [Tool](17-Tools工具调用.md)、Agent、AgentExecutor 的配合；若需更复杂的图编排与多步工作流，可继续学习 **LangGraph** 相关章节。
+**建议下一步：** 在本地依次运行 `AgentSmartSelectV0.3.py`、`AgentSmartSelectV1.0.py`、`AgentReact.py` 和 `Agent2Agent.py`，对照文档理解 [Tool](17-Tools工具调用.md)、Agent、AgentExecutor 的配合；若需进一步把外部能力接入 Agent，再回看 [第 20 章 MCP 模型上下文协议](20-MCP模型上下文协议.md) 中的 `McpClientAgent.py`，把本章和 MCP 主线串起来。链式固定流程与 Agent 的取舍可对照 [第 15 章 LCEL 与链式调用](15-LCEL与链式调用.md) 与本文 **1.4 Agent 的使用场景** 一节。

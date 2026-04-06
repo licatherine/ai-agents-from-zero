@@ -1,13 +1,14 @@
 """
-【案例】不接入大模型的业务图：自定义加法/减法节点，演示「State 在节点间传递、每步更新同一字段」的完整流程，对应教程中「图 + 状态」的入门示例。
+【案例】不接入大模型的业务图：用自定义加法/减法节点演示“同一个状态字段 x 如何沿着节点逐步更新”，帮助理解 Graph 不一定每个节点都要调用 LLM
 
 对应教程章节：第 22 章 - LangGraph 概述与快速入门 → 2、HelloWorld 快速入门
 
 知识点速览：
-- 用 dict 作为 State 类型时，无需预定义 TypedDict，直接传字典即可；适合快速试验。
-- 节点函数接收 state，返回要更新的键值对（如 {"x": state["x"] + 1}），LangGraph 会按默认规则合并（覆盖）。
+- 用 dict 作为 State 类型时，无需预定义 TypedDict，适合快速试验；但如果状态字段逐渐变多，真实项目里更建议改成 TypedDict 或 Pydantic，避免字段名和类型失控。
+- 节点函数接收 state，返回要更新的键值对（如 {"x": state["x"] + 1}），LangGraph 会按默认 Reducer 合并；未显式指定 Reducer 时，通常就是“新值覆盖旧值”。
 - add_edge 串联 START → addition → subtraction → END，形成固定执行顺序。
-- graph.edges / graph.nodes 可查看当前图已注册的边与节点；compile() 后用 invoke(initial_state) 执行。
+- graph.edges / graph.nodes 可在 compile() 前查看当前图已注册的边与节点，适合排查“节点没加进去”或“边连错了”的问题。
+- 本例是一条固定线性业务流；如果后面出现“根据 x 的值决定走不同分支”或“某一步失败后回退重跑”，就更能体现 LangGraph 相比单纯 LCEL Chain 的价值。
 """
 
 from langgraph.constants import START, END
@@ -40,9 +41,9 @@ graph.add_edge("subtraction", END)
 print(graph.edges)
 print(graph.nodes)
 
-# 编译图构建器生成计算图
+# 编译图构建器，得到可执行的图应用对象
 app = graph.compile()
-# invoke()方法只接收状态字典作为核心参数，定义一个初始状态字典，包含键值对"x": 5
+# invoke() 的核心输入是一整个状态字典，这里给 x 一个初始值 5
 initial_state = {"x": 5}
 # invoke 只接收一个核心参数：初始状态字典
 result = app.invoke(initial_state)

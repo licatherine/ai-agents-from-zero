@@ -4,72 +4,117 @@
 
 **本章课程目标：**
 
-- 理解 **MCP（Model Context Protocol，模型上下文协议）** 是什么、解决什么痛点，以及和 [Tool](17-Tools工具调用.md) / [RAG](19-RAG检索增强生成.md) 的定位区别。
-- 掌握 MCP 的客户端-服务器架构与两种通信模式（STDIO / SSE），能阅读和编写简单的 MCP 配置与本地服务端/客户端示例。
-- 通过本地 MCP 天气服务与客户端案例，理解 MCP 的「工具暴露与调用」流程，为后续学习 [第 21 章 Agent 智能体](21-Agent智能体.md) 打基础。
+- 理解 **MCP（Model Context Protocol，模型上下文协议）** 是什么、解决什么痛点，以及它与 [Tool](17-Tools工具调用.md)、[RAG](19-RAG检索增强生成.md)、[Agent](21-Agent智能体.md) 的定位区别。
+- 掌握 MCP 的**主机 / 客户端 / 服务器**架构、核心能力、常见传输方式，以及 `mcp.json`、FastMCP、LangChain MCP 适配器在项目中的作用。
+- 跑通并理解本章全部案例：**极简教学版服务端、FastMCP 服务端、天气 MCP 服务、同进程客户端、基于 `mcp.json` + LangChain Agent 的 MCP 客户端**，为后续学习 [第 21 章 Agent 智能体](21-Agent智能体.md) 打基础。
 
-**前置知识建议：** 已学习 [第 17 章 Tools 工具调用](17-Tools工具调用.md)，了解 Tool / Function Calling 的基本概念与 `@tool`、`bind_tools` 的用法；建议已学 [第 9 章 LangChain 概述与架构](9-LangChain概述与架构.md)、[第 1-3 章 RAG、微调、续训与智能体](1-3-RAG、微调、续训与智能体.md) 中关于智能体与 MCP 的概述。
-
-**学习建议：** 先建立「为什么需要 MCP」的直观印象，再按「MCP 概念 → 架构与传输模式 → 本地案例」顺序学习；案例需 Python 3.12 及以下时会在文中标明。**与前后章衔接**：[第 17 章](17-Tools工具调用.md) 讲的是单进程内 Tool 的定义与调用，本章讲工具如何按**协议**跨进程/跨应用暴露与发现；学完本章后 [第 21 章 Agent](21-Agent智能体.md) 会演示如何把 MCP 提供的工具交给 Agent 使用。
+**学习建议：** 本章建议按 **“为什么需要 MCP → MCP 是什么 → 它能暴露什么能力 → 它怎么接入项目 → 架构与传输 → 本地案例”** 的顺序学习。不要一开始就背协议术语，先把“**MCP 解决的是接入标准化问题**”这件事想清楚，后面的 Host、Client、Server、Tools、Resources、Prompts 才不会乱。如果你第一遍学到这里觉得抽象，也完全正常；第一遍先抓住 **Tools / Resources / Prompts、Host / Client / Server、stdio / Streamable HTTP** 这三条主线，等学完 [第 21 章 Agent 智能体](21-Agent智能体.md) 再回来看 `Agent + MCP`，理解会更扎实。
 
 ---
 
 ## 1、为什么需要 MCP
 
-### 1.1 之前痛点是什么
+### 1.1 真实项目里的接入痛点
 
-**知识局限性**：大模型如 DeepSeek Chat 的知识截止到 2024 年 7 月，无法自动获取最新信息，需要手动联网查询。
+很多同学第一次接触 MCP 时，会把它理解成“让大模型联网”或“让大模型能调用工具”。这只说对了一部分。  
+更准确地说，**MCP 解决的核心问题不是“模型能不能用工具”，而是“不同 AI 应用怎样用统一方式接入外部工具和上下文”**。
 
-**功能分散**：不同 AI 框架(LangChain/Spring AI)各自实现相似功能(Function Calling/Tool Calling)，缺乏统一标准。
+在没有 MCP 时，真实项目里常见的痛点主要有三类：
 
-![](images/20/20-1-1-1.jpeg)
+- **每个 AI 应用都要重复接一遍外部系统**  
+  例如同样是接 GitHub、Slack、数据库、文件系统，Cursor 要写一套，Claude Desktop 要写一套，自研 Agent 平台又要写一套。
 
-### 1.2 直观类比：「贾维斯」与万能适配器
+- **每个框架和宿主各有自己的接法**  
+  即使大家都支持 Tool / Function Calling，真正落地时仍然要处理：服务如何发现、参数 schema 怎么描述、鉴权怎么传、进程怎么启动、结果怎么返回。
 
-很多同学都记得钢铁侠的助手「贾维斯」——一个能连接战甲、实验室、家里所有设备的智能管家。现实中，AI 也需要连接各种「外部能力」：查天气、读文档、查数据库、发邮件等。若每种能力都要单独开发接口，成本会非常高。
+- **工具很难复用成“生态能力”**  
+  没有统一协议时，一个工具即使写得很好，也往往只能服务于某个特定应用，迁移和复用成本很高。
 
-![](images/20/20-1-2-1.jpeg)
+![无 MCP 时：各 AI 应用需分别对接 GitHub、Slack、数据库等，重复开发与适配成本高](images/20/20-1-1-1.jpeg)
 
-![](images/20/20-1-2-2.jpeg)
+所以，MCP 出现的背景，不是“以前没人会写工具”，而是：
 
-**为什么需要 MCP？** 可以概括为三点：
+**大家都在写工具，但缺少一套跨应用、跨框架、跨宿主都能复用的统一连接标准。**
 
-- **统一接口**：不同服务和数据库各有各的「说话方式」，AI 若逐个适配会很麻烦。MCP 提供统一的「翻译官」，让 AI 只需学一种协议就能与多种服务交互。
-- **减少重复开发**：开发者不必为每个服务、每个 AI 应用单独写连接逻辑；按 MCP 规范暴露一次，支持 MCP 的应用都能复用。
-- **更好协作与生态**：工具定义和元数据规范化后，更容易被社区检验和复用，跨模型、跨应用的适配成本也会降低。
+### 1.2 MCP 到底在解决什么问题
 
-**一个具体场景**：
+可以把 MCP 解决的问题压缩成一句话：**让“外部工具、资源、提示词模板”等能力，能够按统一协议被不同 AI 应用发现和使用。**
 
-- **现状**：让「同一个 AI 应用」同时做到联网搜索、发邮件、发博客等，每个功能单独做都不难，但全部集成进一个系统就非常吃力。
-- **举例**：假如 IDE 里有一个 AI 助手，你希望它能：
-  - 查本地数据库辅助开发；
-  - 搜 GitHub Issue 判断是不是已知 bug；
-  - 把 PR 的修改意见发到 Slack 做 Code Review；
-  - 查询甚至修改 AWS、Azure 的配置完成部署。  
-    这些能力背后对应数据库、GitHub、Slack、云厂商等一大堆不同接口，没有统一标准的话，每接一个就要写一套对接逻辑。
-- **有了 MCP 之后**：只要这些服务都按 MCP 标准暴露，就像有了「万能接口」——AI 应用只需按 MCP 去连，就能同时用上上述各类能力，开发更高效、集成成本大大降低。
+举个更贴近项目的例子。假设你在 IDE 里有一个 AI 编程助手，希望它能：
 
-这也是 MCP 架构要解决的核心问题：让 AI 通过**一套协议**与**多种外部资源**协作。
+- 读取本地代码仓库
+- 查 GitHub Issue
+- 调内部文档系统
+- 查询云服务配置
+- 调用数据库辅助排查问题
+
+如果没有 MCP，你往往要为这个 AI 助手单独实现很多连接器。如果这些能力都已经按 MCP 标准暴露，那么这个 AI 助手只需要支持 MCP，就可以统一接入这些服务。
+
+这时，MCP 的价值就很明显了：
+
+- **一次暴露，多处复用**
+- **统一 schema，降低适配成本**
+- **更容易形成工具生态**
+
+### 1.3 直观类比：AI 世界的统一插口
+
+很多同学都记得钢铁侠的助手「贾维斯」：它不是只会聊天，而是能连接战甲、实验室、摄像头、数据库、控制系统等各种外部能力。
+
+现实中的 AI 应用也是一样。一个真正有用的 AI 助手，往往不仅要“说”，还要能：查本地文件、查数据库、搜 GitHub Issue、调天气接口、发消息到 Slack / 微信 / 邮件、调用内部业务系统。
+
+![若缺乏统一协议，每接一类系统都要单独实现连接与鉴权，维护成本陡增](images/20/20-1-2-1.jpeg)
+
+如果每接一个系统都单独写一套连接逻辑，成本会非常高。MCP 的思路，就是给 AI 应用提供一个更像“**统一插口**”的东西。
+
+你可以把它类比成：
+
+- **AI 世界的 USB-C**
+- **大模型版的 OpenFeign / gRPC 协议层**
+- **AI 应用和外部能力之间的万能适配器**
+
+把这层直觉和上一节连起来理解会更顺：**MCP 统一的不是模型本身，而是 AI 应用发现、理解、调用和复用外部能力的方式。**
 
 ---
 
-## 2、MCP 是什么（入门概念）
+## 2、MCP 简介
 
-- **一句话**：MCP（Model Context Protocol）是一套**标准化的通讯协议**，用于规范「大模型 / AI 应用」与「外部工具、数据源」之间的连接方式，让 AI 能以统一方式获取上下文（工具、资源、提示等）。
-- **类比**：
-  - **大模型版的 OpenFeign**：OpenFeign 用于微服务之间通讯，MCP 用于大模型与工具/数据源之间的通讯。  
-    架构类比：传统微服务里「订单服务 → 支付服务 → 优惠券服务」通过 **OpenFeign** 通信；AI 系统里「订单智能体 → 支付智能体 → 优惠券智能体」通过 **MCP** 通信。
-  - **AI 世界的「万能适配器」**：各种服务和数据库各有各的接口，MCP 像统一插头，让 AI 用同一套方式连接它们。
-  - **后端同学可类比 gRPC**：gRPC 用标准化方式让不同语言的服务互相通信；MCP 则是专为 AI 设计的「接口与连接」标准，让 AI 与各种应用、数据源交互。
+### 2.1 定义
 
-**官方与生态链接：**
+MCP（Model Context Protocol，模型上下文协议）是一套**开放的标准协议**，用于规范 **AI 应用 / Agent / IDE / 聊天客户端** 如何与 **外部工具、资源和上下文提供方** 交互。
 
-- MCP 协议官网：https://modelcontextprotocol.io/introduction
+官方的核心表述可以概括成：
+
+- MCP 标准化了应用程序向 LLM 提供上下文的方式
+- 它让 AI 应用可以用统一方式连接不同的数据源和工具
+
+对初学者来说，可以先记住这句：
+
+**MCP 的关键词是“标准协议、统一接入、跨宿主复用”。**
+
+**官方文档与资源：**
+
+- MCP 官方介绍：https://modelcontextprotocol.io/introduction
+- MCP FAQ：https://modelcontextprotocol.io/faqs
+- MCP 架构文档：https://modelcontextprotocol.io/docs/learn/architecture
 - LangChain 对 MCP 的支持：https://docs.langchain.com/oss/python/langchain/mcp
 
-**通俗理解**：MCP 是一种**开放协议**，规定了「应用程序如何把上下文提供给大模型」的标准。可以把它想象成 AI 应用的「USB-C 口」——就像 USB-C 用同一套接口连接手机、电脑、耳机、充电器等各种设备一样，MCP 用同一套方式把大模型与不同的数据源、工具连接起来，避免各接各的、互不兼容。
+### 2.2 和 Tool、RAG、Agent 有什么区别
 
-![](images/20/20-2-1-1.jpeg)
+| 概念                        | 解决什么问题                   | 典型关注点                               |
+| --------------------------- | ------------------------------ | ---------------------------------------- |
+| **Tool / Function Calling** | 模型如何调用一个具体工具       | 工具 schema、参数、调用结果              |
+| **RAG**                     | 模型如何拿到外部知识上下文     | 文档加载、切块、检索、上下文拼接         |
+| **MCP**                     | 外部能力如何被标准化暴露与接入 | Host / Client / Server、协议、传输、发现 |
+| **Agent**                   | 谁来规划、决策、调用这些能力   | 推理、编排、记忆、执行闭环               |
+
+一句话速记：
+
+> **术语约定：** 本章里表格写作 **Tool / Function Calling**，是为了兼容不同文档语境；和 [第 17 章](17-Tools工具调用.md) 一样，你可以把它们先看成同一层“模型如何表达工具调用意图”的机制。
+
+- **Tool** 解决“能不能调用”
+- **RAG** 解决“能不能拿到知识”
+- **MCP** 解决“怎么统一接入”
+- **Agent** 解决“谁来决定何时调用”
 
 ---
 
@@ -77,293 +122,652 @@
 
 ### 3.1 统一接入与抽象
 
-- **统一上下文接入**：以标准化方式把 LLM 需要的**上下文**（工具、资源、提示等）连接起来。可以把它理解为 **Agent 时代的「Type-C 协议」**——希望把不同来源的数据、工具、服务统一起来供大模型调用。
-- **合久必分、分久必合**：早期每个软件（如微信、Excel）都要单独给 AI 做接口；MCP 统一标准后，类似「所有电器都用 USB-C」，AI 一个协议就能连接多种工具与数据源。
-- **比 Function Calling 更高一层的抽象**：Function Calling 是「模型会调工具」的底层能力；MCP 是在此之上的**协议层**——规定工具如何暴露、如何被调用、如何被多端复用，是实现智能体的重要基础。
+MCP 最直观的价值，就是把原本分散的外部能力，用统一方式暴露给 AI 应用。
 
-下面两图分别从「分」（各自为政）与「合」（统一协议）的角度做了对比。
-
-![](images/20/20-3-1-1.jpeg)
+![分散接入：各工具、服务、客户端各自约定协议与 schema，重复适配多](images/20/20-3-1-1.jpeg)
 
 > **说明**：「分」——各应用、各数据源各自对接，重复开发、难以复用。
 
-![](images/20/20-3-1-2.jpeg)
+![MCP 统一层：标准化暴露后，由 Host 侧按同一套方式发现与调用能力](images/20/20-3-1-2.jpeg)
 
 > **说明**：「合」——通过 MCP 等统一协议，一次开发、多端复用。
 
-**小结**：MCP 的核心价值是**不用重复造轮子**；按标准暴露成 MCP 服务后，可被多个 AI 应用复用，工具定义也更规范、更易维护。
+所以，MCP 不是在替代 Tool，而是在 Tool 之上再向上抽象了一层“协议层”。
+
+### 3.2 MCP 服务器通常能暴露什么
+
+根据官方文档，MCP 服务器最核心的三类能力是：
+
+| 类型          | 作用                                                | 控制方式                    | 你仓库里的对应案例                             |
+| ------------- | --------------------------------------------------- | --------------------------- | ---------------------------------------------- |
+| **Tools**     | 可执行动作，例如查天气、查数据库、发请求            | **模型可触发**              | `McpServer.py`、`McpServerWeatherByFastMCP.py` |
+| **Resources** | 可读取内容，例如文件、配置、数据库 schema、API 响应 | **应用 / 宿主决定如何使用** | `McpServerByFastMCP.py` 的 `@mcp.resource()`   |
+| **Prompts**   | 可复用的提示词模板 / 工作流模板                     | **用户显式选择更常见**      | `McpServerByFastMCP.py` 的 `@mcp.prompt()`     |
+
+这里有一个非常值得记住的官方区分：
+
+- **Tools 是 model-controlled**
+- **Resources 是 application-driven**
+- **Prompts 更偏 user-controlled**
+
+也就是说：
+
+- Tool 更适合让模型自动决定何时调用
+- Resource 更适合由宿主决定如何纳入上下文
+- Prompt 更适合由用户显式触发某种模板化工作流
+
+这也是为什么初学者不能把 MCP 简单理解成“就是工具协议”。**工具只是 MCP 很重要的一部分，但不是全部。**
+
+### 3.3 初学者容易忽略的另外几类能力
+
+除了 Tools / Resources / Prompts，官方协议里还有一些更进阶的客户端 / 会话能力，例如：
+
+- **Sampling**：服务器通过客户端向**宿主侧的 LLM** 请求一次生成（把“算力在哪一侧”也纳入协议协作）
+- **Elicitation**：服务器通过客户端向用户请求补充信息
+- **Logging**：服务器向客户端发送结构化日志
+- **Progress / Notifications**：长任务过程中的进度和通知
+
+这些内容在你当前仓库案例里没有作为主线展开，但对理解 MCP 很重要，因为它说明：
+
+**MCP 不只是“列出工具然后调用工具”，它还定义了更完整的人机协作和上下文交换机制。**
+
+不过对本章来说，先重点掌握：
+
+- Tool 如何暴露
+- 服务器和客户端怎么连
+- LangChain / Agent 如何拿到 MCP 工具
+
+就已经足够了。
+
+### 3.4 在实际项目的常见用途
+
+在真实项目里，MCP 最常见的落地方向通常有三种：
+
+1. **给现成 AI 应用接能力**  
+   例如让 Cursor、Claude Desktop、VS Code、ChatGPT 类客户端接入文件系统、代码库、浏览器、内部系统。
+
+2. **给自研 Agent 平台做统一工具接入层**  
+   这样 Agent 平台就不用为 GitHub、数据库、知识库、Slack、云平台各写一套不同协议。
+
+3. **让企业内部能力变成可复用的 AI 接口层**  
+   例如把“查工单”“查订单”“查配置”“发通知”这些能力封装成 MCP 服务，供多个 AI 应用共享。
+
+**安全与信任边界（落地必知）：** MCP Server 往往能以较高权限访问本机文件、内网 API 或密钥；生产环境应控制**来源可信**（仅安装审计过的服务）、**最小权限**与**网络隔离**，并记录调用审计。这与“能接什么”同样重要。
 
 ---
 
 ## 4、怎么用 MCP
 
-- **直接使用现成的 MCP 服务**：无需自己搭服务端，可到公开站点选用已部署的 MCP 服务器，在支持 MCP 的 AI 应用（如 Cursor、Claude Desktop）中配置后即可使用。**通俗理解**：访问某大厂或第三方提供的 MCP 服务，就是在用对方通过 MCP 协议暴露出来的一批 **Tool（工具方法）**（如搜索、读文档、查数据库等），你的 AI 应用连上后就能调用这些工具，无需自己实现对接逻辑。
-  - 例如：https://mcp.so/zh 等平台收录了大量通用 MCP 服务，可按需选用。
-- **本地自建 MCP 服务端 / 客户端**：用于学习协议、调试或对接内部系统。本课程会在后文给出「本地 MCP 天气服务端 + 客户端」的案例；若要使用 LangChain + 多服务 MCP 客户端（如 `langchain-mcp-adapters`），需注意其依赖与 Python 版本（如部分适配器要求 Python 3.12 及以下）。
+### 4.1 直接使用现成的 MCP 服务
 
-![](images/20/20-4-1-1.jpeg)
+如果你的目标不是“学习怎么实现协议”，而是“先把能力接进来”，最直接的方式通常是：
 
-> **说明**：MCP 资源站示例，可浏览、筛选并配置到 IDE 或 AI 应用中。
+- 找到现成的 MCP Server
+- 在宿主应用里配置连接方式
+- 让客户端自动发现其 Tools / Resources / Prompts
+
+当前官方已经有 Registry 方向的能力和生态，公共 MCP 服务器的发现也越来越规范化。对初学者来说，这意味着：
+
+**很多能力不一定要自己写服务端，先学会怎么接、怎么配、怎么调试也很重要。**
+
+官方 Registry 入口：
+
+- https://registry.modelcontextprotocol.io/
+- Registry 说明页：https://modelcontextprotocol.io/registry/about
+
+![通过 Registry 或目录浏览、发现已发布的 MCP 服务与能力（示意）](images/20/20-4-1-1.jpeg)
+
+### 4.2 本地自建 MCP 服务端
+
+如果你要接的是：本地文件系统、内部数据库、企业私有 API、自己的业务系统。
+
+那通常就要自己写 MCP Server。这也是本章案例的重点：我们会通过本地天气服务、FastMCP 示例和 `mcp.json` 客户端配置，理解一个 MCP 服务是如何被暴露、被发现、再被 Agent 使用的。
+
+#### 4.2.1 什么是 FastMCP
+
+这里很适合顺手把 **FastMCP** 这个词讲清楚，因为后面的案例文件名里会频繁出现它。
+
+**FastMCP 可以理解为：MCP 官方 Python 生态里用来快速编写 MCP Server 的高层封装。**它帮你把很多底层样板工作收起来，让你可以更接近“写 Python 函数”的方式去暴露 MCP 能力。
+
+你可以先把它和 MCP 的关系记成下面这组对应：
+
+- **MCP** 是协议标准，解决“AI 应用怎么统一接入外部能力”
+- **FastMCP** 是 Python 里的服务端开发工具，解决“我怎么更方便地把能力按 MCP 标准暴露出去”
+
+也就是说：**MCP 是规则**，**FastMCP 是实现这些规则的一种工具**。这就像：HTTP 是协议，FastAPI / Flask 是帮助你实现 HTTP 服务的框架。
+
+放到这一章里也是一样：MCP 决定 Host、Client、Server 之间怎么协作，FastMCP 帮你更轻松地写出一个 MCP Server。
+
+#### 4.2.2 为什么本章要讲 FastMCP
+
+在真实项目里，如果你准备自己写一个 MCP 服务端，通常有两条常见路线：
+
+1. **自己直接按 SDK / 协议细节去实现**
+2. **借助 FastMCP 这种更高层的封装来实现**
+
+对初学者来说，第二条路线通常更友好，因为它能把注意力放回到“我要暴露什么能力”上，而不是一开始就陷进大量底层细节。
+
+这也是为什么你仓库里的案例会分成两类：
+
+- `McpServer.py`  
+  这是教学版极简实现，帮助你理解“服务端注册工具”这个最小概念。
+
+- `McpServerByFastMCP.py`、`McpServerWeatherByFastMCP.py`  
+  这是更贴近真实 Python MCP 开发体验的写法，帮助你理解 Tool / Resource / Prompt 怎么按官方 SDK 风格暴露出去。
+
+所以这一章里，**FastMCP 不是主角，MCP 协议本身才是主角；但 FastMCP 是你把这套协议真正写成 Python 服务时最重要的入门工具之一。**
+
+### 4.3 在 LangChain / Agent 里使用 MCP
+
+这一点很贴近你当前项目主线。
+
+LangChain 官方已经提供了对 MCP 的适配支持。常见路线是：
+
+1. 用 `MultiServerMCPClient` 连接一台或多台 MCP 服务器
+2. 通过 `get_tools()` 取回 MCP 工具
+3. 把这些工具交给 `create_tool_calling_agent` 或 `create_agent`
+4. 让 Agent 在对话中实际调用它们（Agent 的创建与执行细节见 [第 21 章 Agent 智能体](21-Agent智能体.md)）
+
+这也说明了 MCP 和 LangChain 的关系：
+
+- **MCP** 负责“标准化接入”
+- **LangChain / Agent** 负责“把接进来的能力真正用起来”
 
 ---
 
 ## 5、MCP 架构知识
 
-MCP 采用**客户端-服务器架构**，核心角色如下。
+### 5.1 主机、客户端、服务器定义
 
-![](images/20/20-5-1-1.jpeg)
+MCP 采用典型的 **Host - Client - Server** 架构。
 
-> **说明**：MCP 架构概览。**MCP 主机（MCP Hosts）**：发起请求的 AI 应用（如聊天机器人、AI 驱动的 IDE）。**MCP 客户端（MCP Clients）**：在主机内部，与 MCP 服务器保持 1:1 连接。**MCP 服务器（MCP Servers）**：为客户端提供上下文、工具和提示。**本地资源 / 远程资源**：服务器可访问的本地文件、数据库，或通过 API 访问的远程服务。
+![MCP 架构：Host（用户应用）内的 Client 与远端或子进程中的 Server 通信，Server 再访问本地/远程资源](images/20/20-5-1-1.jpeg)
 
-| 角色           | 说明                                                        |
-| -------------- | ----------------------------------------------------------- |
-| **MCP 主机**   | 发起请求的 AI 应用程序（如聊天机器人、AI 驱动的 IDE）       |
-| **MCP 客户端** | 在主机程序内部，与 MCP 服务器保持 1:1 的连接                |
-| **MCP 服务器** | 为 MCP 客户端提供上下文、工具和提示信息                     |
-| **本地资源**   | 本地计算机中可供 MCP 服务器安全访问的资源（如文件、数据库） |
-| **远程资源**   | 通过 API 等访问的远程数据或服务                             |
+| 角色                         | 含义                                                             |
+| ---------------------------- | ---------------------------------------------------------------- |
+| **MCP Host（MCP 主机）**     | 用户真正交互的应用，例如 IDE、桌面客户端、聊天应用、自研 AI 平台 |
+| **MCP Client（MCP 客户端）** | Host 内部负责和某个 MCP Server 建立协议连接的组件                |
+| **MCP Server（MCP 服务器）** | 对外暴露 Tools / Resources / Prompts 等能力的服务                |
+| **本地 / 远程资源**          | 服务器可访问的文件、数据库、API、内部系统等                      |
 
-**这些角色在流程里如何配合**：假设你在用 AI 编程助手写代码，这个助手就是 **MCP 主机**；它需要访问外部资源（代码库、文档、调试工具等）时，**MCP 服务器**就像「中介」，把这些资源和 AI 连在一起。下面用两个例子说明整体流程。
+官方文档里有个非常重要的点：
 
-- **简单流程（查函数用法）**：你查某函数用法时，AI 通过 MCP 客户端向 MCP 服务器发请求 → 服务器在代码库或文档里查找 → 把结果返回给 AI → AI 根据返回信息生成代码或解释，展示给你。
-- **复杂任务示例**：你可以直接对 AI 说：「帮我查一下最近数学考试的平均分，把不及格同学名单整理到值日表里，并在微信群提醒他们补考。」AI 会通过 MCP 自动完成：连接电脑读取 Excel 成绩、连接微信查找相关群聊、修改在线文档更新值日表。整个过程可以无需你一步步操作，数据也可以在本地处理，既安全又高效。
+- **Host 是你在用的应用**
+- **Client 是 Host 内部的协议连接组件**
 
-![](images/20/20-5-1-2.jpeg)
+这也是为什么“一个 Host 可以连多台 Server”，但“一个具体 Client 通常对应一条到某台 Server 的直接连接”。
 
-### 5.2 两种通信模式（STDIO / SSE）
+![多 Server 拓扑：同一 Host 可挂多个 Client，各 Client 分别维护到一台 Server 的会话](images/20/20-5-1-2.jpeg)
 
-MCP 常见有两种传输模式，分别适用于不同部署与集成场景。
+### 5.2 MCP 协议层面大致怎么工作
 
-![](images/20/20-5-2-1.jpeg)
+MCP 不只是“发 HTTP 请求”这么简单，它在协议层有自己的一套约定。  
+对初学者来说，先理解下面这条主线就够了：
 
-> **说明**：左为 **SSE** 模式（基于 HTTP），右为 **STDIO** 模式（基于标准输入/输出）。
+1. **Host / Client 发起连接**
+2. **Client 和 Server 做初始化**
+3. **双方声明各自支持的 capabilities**
+4. **客户端发现服务器提供的 tools / resources / prompts**
+5. **按需调用或读取**
+6. **结果返回给 Host，再由模型 / UI 使用**
 
-| 维度         | SSE（Server-Sent Events）             | STDIO                                  |
-| ------------ | ------------------------------------- | -------------------------------------- |
-| **典型场景** | 独立部署的 MCP 服务、长连接或流式推送 | 本地集成、命令行工具、与主进程同机部署 |
-| **传输方式** | HTTP 长连接（Keep-Alive）             | 操作系统标准输入/输出（stdin、stdout） |
-| **数据方向** | 服务端 → 客户端（单向推送）           | 双向流，可同时读、写                   |
-| **连接保持** | 长连接，适合持续推送                  | 随进程存在，进程结束则连接结束         |
-| **数据格式** | 文本流（如 EventStream 格式）         | 原始字节流                             |
-| **异常情况** | 可依赖 HTTP 状态码、重连机制处理      | 进程退出或管道断开即结束               |
+MCP 的底层消息格式基于 **JSON-RPC 2.0**（请求 / 响应 / 通知）。这也是为什么你会在很多资料里看到：
 
-**一句话概括**：SSE 适合「独立服务、多客户端、网络访问」；STDIO 适合「单机、轻量、进程内或本地管道」。
+- request / response / notification
+- capabilities negotiation
+- initialize
 
-### 5.3 MCP 服务端基本写法与常用 API（以 FastMCP 为例）
+MCP 更像是：**“AI 应用与外部能力之间的协议层 + 能力发现层 + 调用层”**而不只是某个单纯的 SDK。
 
-写一个 MCP 服务端时，通常需要：**创建 MCP 实例 → 用装饰器注册工具/资源/提示词 → 指定传输方式并启动**。下面以 FastMCP 为例说明常用 API，便于看案例代码时能对应到概念。
+#### 5.2.1 用 5 个动作理解一次完整 MCP 调用
 
-**1. 创建 MCP 实例**
+如果把 MCP 放回一轮真实问答里，可以把它拆成下面 5 个动作：
+
+1. **握手与能力发现（Handshake & Discovery）**  
+   Host 启动后，会根据配置连接 MCP Server，并完成初始化。此时客户端会知道：这台服务器提供了哪些 Tools、Resources、Prompts，以及它支持哪些 capabilities。
+
+2. **用户提问与上下文注入（Context Injection）**  
+   用户提出问题后，Host 会把“用户问题 + 已发现的工具说明 / 资源信息 / 提示词信息”一并提供给模型或应用逻辑。
+
+3. **模型或应用做决策（Reasoning / Decision）**  
+   模型决定是否需要调用某个 Tool，或者应用决定是否读取某个 Resource、选用某个 Prompt。
+
+4. **路由与执行（Routing & Execution）**  
+   Host / Client 按协议把请求发给 MCP Server。Server 在自己的进程或远端服务中执行真正的逻辑，例如查天气、读文件、查数据库。
+
+5. **结果回传与继续生成（Result Feedback）**  
+   Server 把结果返回给 Client，Client 再把结果交回 Host，由 Host 继续让模型生成最终回答，或者直接展示给用户。
+
+你可以把这个过程和第 17 章 Tool 调用对比着理解：
+
+- **Tool 调用** 更像“模型知道怎么调一个函数”
+- **MCP** 更像“这个函数来自哪里、怎么发现、怎么连接、怎么按协议调”
+
+这也是为什么在 Agent 场景里，MCP 常常出现在 Tool 之前一层。
+
+### 5.3 两类常见传输：STDIO 与 HTTP 系列
+
+这一节很重要，因为这里最容易被旧资料带偏。
+
+根据 **MCP 官方传输规范**（文档以 [Transports](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) 等页面为准，版本会迭代），当前主线标准传输是：
+
+1. **stdio**
+2. **Streamable HTTP**
+
+官方还明确说明：
+
+- **Streamable HTTP** 取代了 **2024-11-05 版本中的 HTTP+SSE transport**
+- 新的 HTTP 传输里，服务器**仍然可以使用 SSE 作为流式返回机制**
+
+也就是说，今天更准确的理解应该是：
+
+- **STDIO**：本地子进程通信
+- **Streamable HTTP**：独立服务进程，通过 HTTP 通信，必要时可配合 SSE 流式返回
+
+而你在很多旧资料、旧案例、适配器配置里看到的 `sse`，通常属于：
+
+- 旧的 HTTP+SSE transport 叫法
+- 或兼容写法
+- 或具体库层面对历史接口的保留
+
+![传输方式对照：stdio（子进程管道）与 Streamable HTTP（独立 HTTP 服务，可含 SSE 流式）及历史 SSE 兼容语境](images/20/20-5-2-1.jpeg)
+
+为了和你仓库案例对齐，可以这样记：
+
+| 传输方式                    | 更适合什么场景                     | 你仓库里的对应案例                         |
+| --------------------------- | ---------------------------------- | ------------------------------------------ |
+| **STDIO**                   | 本地、轻量、由客户端拉起服务端进程 | `McpServerByFastMCP.py`                    |
+| **SSE / HTTP 兼容教学写法** | 理解历史资料、理解远程服务形态     | `McpServerWeatherByFastMCP.py`、`mcp.json` |
+| **当前官方主线**            | 优先理解为 `Streamable HTTP`       | 文档主线应以官方规范为准                   |
+
+一句话速记：
+
+- **本章案例保留 `sse` 写法，是为了兼容仓库现有代码**
+- **当前官方主线应理解为 `stdio + Streamable HTTP`**
+
+#### 5.3.1 传输之外，还要注意安全边界
+
+MCP 真正落地时，传输方式只是第一层，安全边界同样重要。结合官方安全实践，可以先记住下面几条：
+
+- **写操作要有人确认**：删除、外呼、支付、批量修改这类 Tool，不要默认让模型静默执行。
+- **HTTP 服务要做鉴权和来源校验**：至少要考虑 token、会话身份、Origin / 来源校验，而不是“能连上就算接入成功”。
+- **本地服务尽量收口暴露范围**：能只监听本机就不要默认对公网开放，避免把调试用 MCP Server 直接变成外网入口。
+- **日志与业务数据要分级处理**：进度、错误、调试日志很有用，但不要把敏感配置、私有数据原样暴露给模型或不可信客户端。
+
+### 5.4 FastMCP 的基本写法与常用 API
+
+你仓库里的 MCP 服务端案例，主要围绕 FastMCP / 官方 Python SDK 这条路线展开。看案例前，先把这几个 API 的职责记住：
+
+#### 5.4.1 创建服务实例
 
 ```python
 from mcp.server.fastmcp import FastMCP
-mcp = FastMCP("服务名称")   # 传入一个名字，用于标识本服务
+
+mcp = FastMCP("Demo")
 ```
 
-**2. 注册工具：`@mcp.tool()`**
+这一步是在创建一个 MCP Server 实例。
 
-把普通 Python 函数暴露为 MCP **工具**，客户端可以按名称和参数调用。
-
-| 写法                         | 说明                                                                |
-| ---------------------------- | ------------------------------------------------------------------- |
-| `@mcp.tool()`                | 无参：工具名、描述由函数名和 docstring 自动生成，参数由函数签名推断 |
-| `@mcp.tool("自定义工具名")`  | 可指定工具在协议中的名称                                            |
-| `@mcp.tool(description="…")` | 可显式写描述，便于客户端/大模型理解何时调用                         |
-
-函数需带类型注解（如 `def add(a: int, b: int) -> int`），客户端会根据签名传参。例如：
+#### 5.4.2 注册 Tool
 
 ```python
 @mcp.tool()
 def add(a: int, b: int) -> int:
-    """两数相加"""
     return a + b
 ```
 
-**3. 注册资源：`@mcp.resource(uri)`**
+这表示把一个普通 Python 函数暴露成 MCP Tool。
 
-把一段**静态或动态内容**通过 URI 暴露出去，供客户端按 URI 读取（如文档、配置）。
-
-| 写法                             | 说明                                  |
-| -------------------------------- | ------------------------------------- |
-| `@mcp.resource("scheme://path")` | 必填：资源 URI，客户端通过该 URI 访问 |
-
-例如：`@mcp.resource("greeting://default")`，返回的内容可由客户端拉取后作为上下文使用。
-
-**4. 注册提示词模板：`@mcp.prompt()`**
-
-把**带占位符的提示词**暴露为「提示词模板」，客户端传入参数后得到最终提示文本，再交给大模型使用。
-
-| 写法            | 说明                                           |
-| --------------- | ---------------------------------------------- |
-| `@mcp.prompt()` | 函数参数即模板参数，返回值即生成的提示词字符串 |
-
-例如：`greet_user(name, style="friendly")` 返回「为{name}写一句友善的问候」等，客户端可传入不同 `name`、`style` 生成不同提示。
-
-**5. 启动服务：`mcp.run(transport=...)`**
-
-| 参数                | 说明                                                         |
-| ------------------- | ------------------------------------------------------------ |
-| `transport="stdio"` | 通过标准输入/输出与调用方通信，需由 MCP 客户端进程启动本进程 |
-| `transport="sse"`   | 以 HTTP + SSE 方式对外提供接口，可独立部署、多客户端连接     |
-
-**小结**：`@mcp.tool()` = 暴露可调用的**工具**；`@mcp.resource(uri)` = 暴露可读的**资源**；`@mcp.prompt()` = 暴露**提示词模板**；`mcp.run(transport=...)` = 选择传输方式并启动服务。后续 6.2 的案例会直接用到这些 API。
-
-**完整基本案例**（仅一个工具 + STDIO 启动，可直接保存为 `mcp_basic_demo.py` 后用 Cursor/Claude 等配置为 MCP 服务器运行）：
+#### 5.4.3 注册 Resource
 
 ```python
-# pip install mcp
-from mcp.server.fastmcp import FastMCP
-
-mcp = FastMCP("BasicDemo")
-
-@mcp.tool()
-def add(a: int, b: int) -> int:
-    """两数相加，返回和。"""
-    return a + b
-
-if __name__ == "__main__":
-    mcp.run(transport="stdio")
+@mcp.resource("greeting://default")
+def get_greeting() -> str:
+    return "Hello from static resource!"
 ```
 
-- **步骤**：创建实例 → 用 `@mcp.tool()` 注册一个 `add` 工具（含类型注解和 docstring）→ `mcp.run(transport="stdio")` 启动。客户端连接后即可发现并调用 `add`。
-- **运行方式**：在终端直接运行会因无客户端而报 Invalid JSON，属正常；需在 Cursor/Claude Desktop 等中配置「MCP 服务器」为该脚本（如 `python mcp_basic_demo.py`），由客户端启动并通信。
+这表示服务器对外暴露一个可读资源，客户端可以按 URI 读取。
+
+#### 5.4.4 注册 Prompt
+
+```python
+@mcp.prompt()
+def greet_user(name: str, style: str = "friendly") -> str:
+    return f"为{name}生成问候语"
+```
+
+这表示服务器对外暴露一个可复用提示词模板。
+
+#### 5.4.5 启动服务
+
+```python
+mcp.run(transport="stdio")
+```
+
+或者：
+
+```python
+mcp.run(transport="streamable-http")
+```
+
+在你仓库的案例里，还保留了：
+
+```python
+mcp.run(transport="sse", host="127.0.0.1", port=8000)
+```
+
+这类写法。它对理解现有教学案例有帮助，但从当前规范主线看，应该把它放在“**历史兼容 / 案例保留写法**”的语境里理解。
+
+#### 5.4.6 从底层 SDK 视角看客户端
+
+你仓库里的 `McpClientAgent.py` 用的是更高层的 `MultiServerMCPClient`，它把很多底层细节都封装掉了。  
+但从学习角度，知道底层客户端大概在做什么，会更有助于你理解 MCP。
+
+以官方 SDK 思路来看，一个 MCP 客户端的典型动作通常是：
+
+1. 建立传输连接
+2. 创建 `ClientSession`
+3. 调用 `initialize()`
+4. `list_tools()` / `list_resources()` / `list_prompts()`
+5. `call_tool()` / `read_resource()` / `get_prompt()`
+
+如果是 **STDIO**，大致会是这样的顺序：
+
+```python
+import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def main():
+    server_params = StdioServerParameters(
+        command="python",
+        args=["mcp_server_stdio.py"],
+    )
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+            result = await session.call_tool("add", {"a": 1, "b": 2})
+            print(tools)
+            print(result)
+
+asyncio.run(main())
+```
+
+如果是 **Streamable HTTP**，核心差异主要在“连接方式”变成了远程 URL：
+
+```python
+import asyncio
+from mcp import ClientSession
+from mcp.client.streamable_http import streamable_http_client
+
+async def main():
+    async with streamable_http_client("http://127.0.0.1:8000/mcp") as (read, write, _):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+            print(tools)
+
+asyncio.run(main())
+```
+
+你不需要一上来就背这些底层 API，但知道这层动作很有价值，因为它能帮助你理解：
+
+- 为什么要先 `initialize()`
+- 为什么客户端能“列出”工具、资源和提示词
+- 为什么 `MultiServerMCPClient` 本质上是在帮你封装这些底层过程
+
+### 5.5 完整调用过程理解
+
+把协议层想象成一条完整链路，会更容易理解：
+
+1. 用户在 Host 中发起请求
+2. Host 内部某个 MCP Client 与对应 Server 建立会话
+3. Client 发现 Server 暴露的能力
+4. 模型或应用决定是否调用某个 Tool / 读取某个 Resource / 获取某个 Prompt
+5. Server 执行或返回结果
+6. Host 把结果展示给用户，或继续交给模型推理
+
+如果这个流程再落到 LangChain Agent 里，就会变成：
+
+1. `MultiServerMCPClient` 连接 MCP 服务
+2. `get_tools()` 获取工具
+3. Agent 拿到工具列表
+4. 用户提问
+5. Agent 选择工具
+6. 工具返回结果
+7. 模型基于结果继续生成最终回答
 
 ---
 
 ## 6、案例实战：本地 MCP 天气服务与客户端
 
-本小节给出「本地 MCP 天气服务端 + 简单客户端」的完整示例，便于理解 MCP 的暴露与调用方式。若使用基于 FastMCP 的 SSE 服务或 `langchain-mcp-adapters` 的多服务客户端，需注意：**部分依赖要求 Python 3.12 及以下**，请以当前环境与官方文档为准。
+### 6.1 本章案例在项目中的位置
 
-### 6.1 环境与依赖
+核心文件如下：
 
-- 安装示例中用到的库（如 `httpx`、`loguru` 等）；若使用 `langchain-mcp-adapters`，请按官方说明安装并注意 Python 版本。
-- 天气接口需 OpenWeather API Key，可写入 `.env`（如 `OPENWEATHER_API_KEY=xxx`），参见 [第 17 章 Tools 工具调用](17-Tools工具调用.md) 中的天气助手准备。
+| 文件                           | 作用                   | 你应该怎样理解它                                        |
+| ------------------------------ | ---------------------- | ------------------------------------------------------- |
+| `McpServer.py`                 | 极简教学版服务端       | **概念演示版**，帮助理解“工具如何注册和暴露”            |
+| `McpServerByFastMCP.py`        | FastMCP 正式写法示例   | 展示 `tool / resource / prompt + stdio`                 |
+| `McpServerWeatherByFastMCP.py` | 天气服务端             | 展示天气 Tool 和 HTTP/SSE 兼容写法                      |
+| `McpClient.py`                 | 简化版客户端           | **同进程教学版**，不是严格意义上的协议网络客户端        |
+| `mcp.json`                     | 客户端连接配置         | 声明要连接哪些 MCP 服务、怎么连接                       |
+| `McpClientAgent.py`            | LangChain + MCP 客户端 | 更贴近真实项目，读取 `mcp.json` 后把 MCP 工具交给 Agent |
 
-### 6.2 MCP 服务端（天气查询）
+### 6.2 服务端案例区分理解
 
-**本节知识点速览：**
-
-- **目标**：把「查天气」等能力封装成 MCP 工具，供客户端按协议发现与调用；服务端负责「注册并暴露」工具。
-- **两种实现**：① 不用 FastMCP（本仓库 McpServer.py）：手写服务类与 `@mcp.tool()`，只演示工具注册思路，无真实网络监听，适合学原理、兼容高版本 Python。② 用 FastMCP（McpServerByFastMCP.py）：官方库提供 `@mcp.tool()` / `@mcp.resource()` / `@mcp.prompt()` 及 STDIO/SSE 传输，可被 Cursor/Claude 等标准客户端连接，需 `pip install mcp`。
-- **传输方式**：STDIO = 标准输入/输出，需由客户端进程启动本进程；SSE = HTTP 长连接，可独立部署。直接运行 STDIO 服务会因无客户端发 JSON 而报 Invalid JSON，属正常。
-- **与 [第 17 章 Tool](17-Tools工具调用.md) 的关系**：Tool 是单进程内能力封装；MCP 服务端是把「工具」按协议暴露出去，供跨进程/跨应用调用。
-
----
-
-本案例将「查询指定城市天气」封装为 MCP 工具，供客户端调用。下面先对比两种服务端写法，再给出对应源码。
-
-**「用 FastMCP」和「不用 FastMCP」两种服务端实现有何区别？**
-
-| 维度           | 本仓库 McpServer.py（不用 FastMCP）              | 使用 FastMCP（如 McpServerByFastMCP.py）                                                                    |
-| -------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| **实现方式**   | 自己写一个类，手写 `@mcp.tool()`、`_tools` 等    | 用官方库 `from mcp.server.fastmcp import FastMCP`，直接 `@mcp.tool()` / `@mcp.resource()` / `@mcp.prompt()` |
-| **协议与传输** | 仅演示「工具注册」思路，未实现真实 HTTP/SSE 监听 | 内置 STDIO/SSE 等传输，符合 MCP 协议，可被标准客户端连接                                                    |
-| **适用场景**   | 学习原理、多 Python 版本兼容（如 3.13）          | 快速搭可被 Cursor/Claude 等连接的正式 MCP 服务                                                              |
-| **依赖**       | 仅 httpx、loguru 等，无 mcp 包                   | 需 `pip install mcp`，部分环境需 Python 3.12 及以下                                                         |
-
-**手写实现**（不依赖 FastMCP，适合学原理、多 Python 版本）：
+#### 6.2.1 极简教学版：McpServer.py
 
 【案例源码】`案例与源码-2-LangChain框架/11-mcp/McpServer.py`
 
 [McpServer.py](案例与源码-2-LangChain框架/11-mcp/McpServer.py ":include :type=code")
 
-> **说明**：在基于 FastMCP 的 SSE 实现中，常用 **HTTP 202 Accepted** 表示请求已接受、结果将通过 SSE 流式返回，以适配 MCP SSE 的流式处理特性；200 OK 则多用于一次性请求-响应。本仓库中的 `McpServer.py` 为简化版，重点展示「工具注册与暴露」的思路。
+这个文件最重要的价值，不是“严格协议完整实现”，而是**帮助初学者先看懂 MCP 服务端到底在干什么**。
 
-**使用 FastMCP 的实现**（无需手写 class，本质相同，仅传输/业务不同）：
+它做的核心事情只有两件：
 
-下面两个示例都是 FastMCP：`mcp = FastMCP("名")` + `@mcp.tool()` + `mcp.run(...)`，与上面手写 class 形成对比。区别仅在于：左列演示多能力（tool/resource/prompt）+ STDIO；右列演示天气查询 + SSE，且 host/port 在 `run(transport="sse", host=..., port=...)` 时传入（构造函数不能传 host/port）。
+1. 维护一个 `_tools` 容器
+2. 用 `@mcp.tool()` 把 `get_weather` 注册进去
 
-| 手写（McpServer.py）           | FastMCP 示例一（Demo，STDIO）                           | FastMCP 示例二（天气，SSE）                                             |
-| ------------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------- |
-| 需自己写 `MCPWeatherServer` 类 | 多能力：add、resource、prompt；`run(transport="stdio")` | 单工具 get_weather；`run(transport="sse", host="127.0.0.1", port=8000)` |
+所以它更像一个“**MCP 思想演示版**”。
 
-【案例源码】`案例与源码-2-LangChain框架/11-mcp/McpServerByFastMCP.py` · 【案例源码】`案例与源码-2-LangChain框架/11-mcp/McpServerWeatherByFastMCP.py`
+你应该把它理解成：
+
+- 帮你先理解“服务器暴露工具”这件事
+- 帮你理解客户端为什么能发现工具
+- 帮你理解 MCP 和普通 `@tool` 的关系
+
+但也要明确：**它不是一个严格意义上完整、标准、可独立对外服务的 MCP 服务器实现。**
+
+#### 6.2.2 标准写法入门版：McpServerByFastMCP.py
+
+【案例源码】`案例与源码-2-LangChain框架/11-mcp/McpServerByFastMCP.py`
 
 [McpServerByFastMCP.py](案例与源码-2-LangChain框架/11-mcp/McpServerByFastMCP.py ":include :type=code")
 
-### 6.3 MCP 配置文件（多服务时使用）
+这个文件更接近“官方 Python SDK / FastMCP 的正常使用方式”，它同时演示了：
 
-**说明**：本节讲的是**客户端侧**的配置文件，不是「另一种 MCP 服务器」。当你的 **MCP 客户端**（如 LangChain 的 `MultiServerMCPClient` 或 Cursor/Claude）需要连接**多台** MCP 服务器时，通过一份 `mcp.json` 声明「连谁、用什么传输方式」即可。
+- `@mcp.tool()`
+- `@mcp.resource()`
+- `@mcp.prompt()`
+- `mcp.run(transport="stdio")`
 
-**mcp.json 的定位与约束作用（调用说明）**
+它很适合用来回答一个关键问题：**MCP 服务器不只是暴露工具，它还可以暴露资源和提示词模板。**
 
-- **唯一契约**：`mcp.json` 是 Agent 调用工具的**「唯一契约」**——在规则层面严格约束 Agent 能调用哪些工具、怎么调用，从而消除多余调用和「随意性」，从根上减少错误。
-- **操作边界**：配置中明确定义**可调用工具的全集**、**每个工具的调用规则**以及**入参/出参格式**；Agent 的理论行为被限制在该范围内，相当于为 Agent 划定了「操作边界」，未在配置中声明的工具对 Agent 不可见，从而自然避免越权或误调用。
-- **可控性**：模型的随机性可通过 `mcp.json` 的结构化定义与 Agent 执行规则完全约束；若仍出现异常，多为约束不足，可通过完善配置与工程手段规避。
+这也是本章里最适合拿来建立“Tools / Resources / Prompts 三分法”直觉的案例。
 
-**工具定义规范（配置中应包含的要素）**
+#### 6.2.3 天气服务端：McpServerWeatherByFastMCP.py
 
-在 `mcp.json` 或与 MCP 协议配套的工具定义中，通常需要约定：
+【案例源码】`案例与源码-2-LangChain框架/11-mcp/McpServerWeatherByFastMCP.py`
 
-| 要素                     | 说明                                                           |
-| ------------------------ | -------------------------------------------------------------- |
-| **工具名**               | 唯一、简洁、无歧义，禁止同名或近似名                           |
-| **工具描述**             | 限定使用场景并排除非场景，杜绝多余调用                         |
-| **入参类型 / 必选性**    | 必选参数写死，无参数时直接拒绝调用                             |
-| **参数格式**             | 如 city 仅支持地级市名称等，在 description 中写清              |
-| **返回值规范**           | 约定返回结构，便于 Agent 解析                                  |
-| **additionalProperties** | 建议设为 `false`，禁止传入配置外的任何参数，从根上避免参数传错 |
+[McpServerWeatherByFastMCP.py](案例与源码-2-LangChain框架/11-mcp/McpServerWeatherByFastMCP.py ":include :type=code")
 
-**单工具定义示例（get_weather）**
+这个文件主要展示两件事：
 
-```json
-{
-  "tools": [
-    {
-      "name": "get_weather",
-      "description": "仅用于查询指定城市的实时天气，非天气查询需求禁止调用",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "city": {
-            "type": "string",
-            "description": "仅支持国内地级市名称，如北京、上海，不接受省/区/县"
-          }
-        },
-        "required": ["city"],
-        "additionalProperties": false
-      }
-    }
-  ]
-}
-```
+1. 如何把天气查询封装成 MCP Tool
+2. 如何把服务端作为“独立服务”运行起来
 
-上述示例中：`name` 唯一标识工具；`description` 限定场景；`required` 强制必填；`additionalProperties: false` 禁止额外参数，避免调错。
+不过要注意，这个文件用的是仓库中的 `transport="sse"` 写法。结合前面 5.3 节，你应该这样理解它：
 
----
+- **从课程案例角度**：它在演示“独立进程 + HTTP/SSE 风格服务”的形态
+- **从当前官方规范角度**：应把它归入对旧式 HTTP+SSE transport 的理解与兼容
 
-仓库中已提供 `mcp.json`，路径为 `案例与源码-2-LangChain框架/11-mcp/mcp.json`，供多服务客户端加载；可按需修改。
+所以这份案例保留是有价值的，但阅读时要知道它处在**案例语境**，不是当前规范主线的唯一写法。
 
-**配置示例说明（服务连接）：**
-
-- **天气服务（SSE 模式）**：`weather` 使用 `transport: "sse"`，通过 HTTP 长连接与本地 8000 端口的 `/sse` 通信，适合独立运行的 MCP 服务。
-- **网页抓取服务（STDIO 模式）**：`fetch` 使用 `transport: "stdio"`，通过 `uvx` 运行 `mcp-server-fetch`，适合本地命令行工具、无需单独网络端点。
+### 6.3 mcp.json 简介
 
 【配置文件】`案例与源码-2-LangChain框架/11-mcp/mcp.json`
 
 [mcp.json](案例与源码-2-LangChain框架/11-mcp/mcp.json ":include :type=code")
 
-- **作用**：调用 `weather` 可获取天气数据；调用 `fetch` 可抓取并解析网页内容，让 AI 能基于链接内容回答问题。
+这一节我特别想帮你纠正一个常见误区：
 
-### 6.4 MCP 客户端（本地调用示例）
+**`mcp.json` 不是 MCP 协议本身，也不是“唯一契约”。**
 
-下面示例演示如何在本机直接调用 MCP 服务端已注册的天气工具，不依赖 LangChain Agent，也不依赖 `langchain-mcp-adapters`（通过同进程导入 mcp 实例或加载 mcp.json 仅读配置）。若要将 MCP 工具与 LangChain Agent 结合（从 mcp.json 加载配置、MultiServerMCPClient 获取工具并交给 AgentExecutor），见 [第 21 章 - Agent 智能体](21-Agent智能体.md) 中的 **5.4 Agent + MCP 工具（mcp.json）**。
+它更准确的定位是：**某些 MCP Host / Client / 适配器常用的客户端连接配置文件。**
+
+也就是说，它解决的是：
+
+- 要连接哪几台服务器
+- 每台服务器用什么 transport
+- URL / command / args 是什么
+
+而不是：
+
+- MCP 协议本体如何定义
+- Tool schema 如何成为官方唯一规范文件
+
+对你仓库里的这个 `mcp.json`，可以这样理解：
+
+- `weather`
+  - 走 `sse`
+  - 指向本地天气服务
+- `fetch`
+  - 走 `stdio`
+  - 通过命令启动一个本地 MCP Server
+
+这也很好地体现了 MCP 的一个现实特点：**同一个客户端完全可以同时连接多台 MCP Server，而且每台服务器可以用不同传输方式。**
+
+### 6.4 客户端案例怎么区分理解
+
+#### 6.4.1 同进程教学版客户端：McpClient.py
 
 【案例源码】`案例与源码-2-LangChain框架/11-mcp/McpClient.py`
 
 [McpClient.py](案例与源码-2-LangChain框架/11-mcp/McpClient.py ":include :type=code")
 
-### 6.5 测试建议
+这个文件非常容易让初学者误会，所以一定要讲清楚：
 
-- **问题 1（调用 MCP 天气）**：先启动 `McpServer.py`，再运行 `McpClient.py`，查询如「北京」对应城市（如 Beijing）的天气，确认能拿到 OpenWeather 返回并正确解析。
-- **问题 2（若已配置 fetch 等 MCP 服务）**：在支持 MCP 的 AI 应用或自写 Agent 中，可提问如「请总结 https://github.langchain.ac.cn/langgraph/reference/mcp/ 这篇文档」，由 AI 通过 fetch 类工具抓取页面后再总结。
+它的重点是演示：
+
+- 服务端如何暴露工具
+- 客户端如何发现工具
+- 工具如何被调用
+
+但它的实现方式是：
+
+- `from McpServer import mcp`
+- 直接读 `mcp._tools`
+- 同进程内直接调用函数
+
+所以它更像：**MCP 思路演示版客户端**，而不是：**真正按协议通过网络或子进程传输连接到独立服务端的客户端**。
+
+也正因为如此，它很适合入门，但不适合被误当成“正式 MCP 网络调用案例”。
+
+#### 6.4.2 更贴近真实项目的客户端：McpClientAgent.py
+
+【案例源码】`案例与源码-2-LangChain框架/11-mcp/McpClientAgent.py`
+
+[McpClientAgent.py](案例与源码-2-LangChain框架/11-mcp/McpClientAgent.py ":include :type=code")
+
+这个案例更贴近真实项目，因为它做了下面这条完整链路：
+
+1. 读取 `mcp.json`
+2. 用 `MultiServerMCPClient` 连接服务
+3. 通过 `get_tools()` 拿到 MCP 工具
+4. 把工具交给 LangChain Agent
+5. 让 Agent 在对话中实际使用这些工具
+
+这个文件最值得学习的地方有两个：
+
+**第一，它说明 MCP 和 Agent 是怎么接起来的。**  
+MCP 不负责帮你规划，也不负责帮你推理；它负责把工具接进来。真正决定“什么时候调用天气工具”的，是 Agent。
+
+**第二，它说明 LangChain 对 MCP 的支持已经不只停留在工具发现。**  
+根据 LangChain 官方文档，除了 `get_tools()`，现在还可以：
+
+- `get_resources()`
+- `get_prompt()`
+- 使用 stateful session
+- 处理 logging / elicitation / structured content
+
+不过你当前仓库主线，还是以 **MCP 工具接入 Agent** 为重点，这也是最适合初学者先掌握的第一步。
+
+这里再补一个非常有价值的官方细节：
+
+**`MultiServerMCPClient` 默认偏“无状态”工具调用路径：** 不少实现会在每次工具调用时新建 MCP `ClientSession`、执行后释放。若要与**带会话状态**的 Server 长期交互，需按文档使用 **`async with client.session():`** 等写法维持会话（与本仓库 `McpClientAgent.py` 一致）。
+
+### 6.5 测试建议与学习顺序
+
+建议按下面顺序跑这一章案例：
+
+1. **先看 `McpServer.py` + `McpClient.py`**  
+   先建立“服务端暴露工具、客户端发现并调用”的直觉。
+
+2. **再看 `McpServerByFastMCP.py`**  
+   建立对 `tool / resource / prompt` 三类能力的整体认识。
+
+3. **再看 `McpServerWeatherByFastMCP.py` + `mcp.json`**  
+   理解独立服务和客户端配置。
+
+4. **最后跑 `McpClientAgent.py`**  
+   看 LangChain Agent 怎么把 MCP 工具真正用起来。
+
+如果你想更贴近官方生态调试方式，还可以了解 **MCP Inspector**：
+
+- 官方工具文档：https://modelcontextprotocol.io/docs/tools/inspector
+
+它非常适合做这些事情：
+
+- 查看服务器有哪些 Tools / Resources / Prompts
+- 手工测试工具参数
+- 看服务端日志和通知
+
+这对排查“到底是服务端没暴露出来，还是客户端没连上”非常有帮助。
 
 ---
 
+**章节思考题：**
+
+1. MCP、Tool、RAG、Agent 这四者分别解决什么问题？
+
+   **答案：** Tool 解决的是一个具体可调用能力，RAG 解决的是给模型补知识，Agent 解决的是围绕目标做决策和多步执行，MCP 解决的是把外部能力和上下文以统一协议接进 AI 应用。它们不在同一层，MCP 更像连接标准。
+
+2. Host、Client、Server 在一次 MCP 调用里分别承担什么职责？
+
+   **答案：** Host 是发起和管理 AI 应用的一侧，负责整体运行环境；Client 负责按照 MCP 协议和 Server 通信；Server 负责真正暴露 Tool、Resource 或 Prompt 等能力。一次调用里，Host 用 Client 去访问 Server 提供的标准化能力。
+
+3. 为什么当前官方主线应优先理解为 `stdio + Streamable HTTP`，而不是只记 `sse`？
+
+   **答案：** 因为官方主线已经从只讲 `sse` 转向更通用的 `stdio + Streamable HTTP` 认知：前者适合本地进程通信，后者适合网络服务化接入。只记 `sse` 会把 MCP 理解成某一种传输实现，而忽略它更完整的落地方式。
+
+4. 如果你所在团队要把内部能力开放给多个 AI 应用复用，你会怎样区分哪些更适合做成 MCP Tool、Resource 或 Prompt？
+
+   **答案：** 需要可执行动作的能力适合做成 Tool，比如查库存、发请求、读数据库；需要提供静态或半静态上下文的内容更适合做成 Resource，比如文档、配置、表结构；需要沉淀可复用提示模板的，则更适合做成 Prompt。真正落地时，还要顺手把认证、权限边界和最小暴露范围一起设计进去，而不是只把能力“挂出来”。
+
+5. 现在请你用自己的话向新人解释“本地 Tool 调用、MCP 标准化接入、Agent 自主决策”这三层分别在做什么。
+
+   **答案：** 可以这样解释：本地 Tool 调用是应用自己内置了几个函数，模型在本进程里选来用；MCP 标准化接入是把这些能力通过统一协议对外暴露，多个 AI 应用都能复用；Agent 自主决策则是在更上一层决定什么时候该用哪个能力、是否继续下一步。
+
 **本章小结：**
 
-- **MCP** 是规范「大模型与外部工具/数据源」连接的**标准化协议**，解决接口不统一、重复开发、协作难等问题；可类比「大模型版的 OpenFeign」或 AI 世界的「万能适配器」。架构上采用客户端-服务器模型，常见传输模式有 **STDIO**（本地/进程内）和 **SSE**（网络、流式）。
-- 学习时可通过本地 MCP 天气服务端与客户端（`McpServer.py`、`McpClient.py`）理解「工具暴露与调用」；多服务场景可配合 `mcp.json` 与 LangChain MCP 适配器（注意 Python 版本与依赖）。
-- **定位速记**：[Tool](17-Tools工具调用.md) 让大模型能用工具；[RAG](19-RAG检索增强生成.md) 让大模型获得检索上下文；**MCP** 让大模型与工具/服务之间的连接标准化、可复用。与 [Agent](21-Agent智能体.md)、Function Calling 等的详细对比见 [第 21 章 Agent 智能体](21-Agent智能体.md) 第 6 节。
+- **MCP 的本质**：不是模型、不是工具本身，而是 AI 应用与外部能力之间的标准化连接协议。
+- **MCP 的核心价值**：统一发现、统一描述、统一接入，让工具、资源、提示词模板更容易跨应用复用。
+- **和其他概念的区别**：Tool 解决“调用能力”，RAG 解决“检索知识”，Agent 解决“规划和决策”，MCP 解决“标准化接入”。
+- **当前规范主线要点**：从官方规范看，标准传输应优先理解为 `stdio` 与 `Streamable HTTP`；仓库中的 `sse` 写法保留为案例兼容与教学理解用途。
+- **本章案例主线**：从极简版教学服务端，到 FastMCP 服务端，再到 `mcp.json` + LangChain Agent 的 MCP 客户端，已经构成了完整的入门路线。
+- **安全边界不能省略**：MCP 让接入更统一，不代表接入就天然安全。真实项目里仍要考虑服务器来源可信、认证授权、最小权限、敏感能力隔离，以及不要把本不该暴露的内部资源直接开放给模型侧。
+- 从掌握结果看，学完本章后，你至少应该：能分清 **MCP 是协议层**，不是 Tool 本身、不是 Agent 本身，也不是 RAG 本身；知道 **Host / Client / Server** 三层角色分别负责什么，以及 Tools / Resources / Prompts 有什么边界；了解当前官方主线下的两类传输：`stdio` 和 `Streamable HTTP`，并能解释为什么仓库里仍会看到历史 `sse` 写法；知道 MCP 解决的是“统一接入”，不是“替你做安全设计”。
 
-**建议下一步：** 在本地跑通 `McpServer.py` 与 `McpClient.py`，巩固 MCP 的配置与调用；接着学习 [第 21 章 Agent 智能体](21-Agent智能体.md)，理解 [Tool](17-Tools工具调用.md) 与 Agent 的配合及 ReAct、A2A 等案例。若需更复杂的图编排与多步工作流，可继续学习 **LangGraph** 相关章节。MCP 在 Java 生态也有实现，可参考 B 站视频（74–80 集）：https://www.bilibili.com/video/BV1pvWGznEqh。
+**建议下一步：** 建议先把本章的本地服务端和客户端都亲手跑通，再回看 [第 17 章 Tools 工具调用](17-Tools工具调用.md) 和 [第 21 章 Agent 智能体](21-Agent智能体.md)，你会更容易看清“本地 Tool、MCP Tool、Agent 决策层”三者在工程上的分工。

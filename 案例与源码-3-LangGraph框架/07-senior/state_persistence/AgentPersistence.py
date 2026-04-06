@@ -4,9 +4,9 @@
 对应教程章节：第 25 章 - LangGraph 高级特性 → 2、状态持久化（Persistence）
 
 知识点速览：
-- create_agent(model=..., checkpointer=...) 生成的可调用对象内部仍是图；checkpointer 负责按 thread_id 存消息历史。
-- 每一轮 invoke 传入新的用户消息，与 config 中同一 thread_id 组合后，模型能看到此前轮次的 messages。
-- 生产环境可将 InMemorySaver 替换为 RedisSaver、PostgresSaver 等；需配置 API Key（如 aliQwen-api）。
+- `create_agent(..., checkpointer=...)` 说明高层 Agent 接口底层仍然可以吃到 LangGraph 的持久化能力。
+- 同一 `thread_id` 下的多次 invoke 会连续使用同一条线程状态，这也是“多轮对话为什么能续上”的关键。
+- 这个案例最值得帮助读者建立的认知是：Persistence 不只服务于手写图，也服务于更高层的 Agent 体系。
 """
 
 import os

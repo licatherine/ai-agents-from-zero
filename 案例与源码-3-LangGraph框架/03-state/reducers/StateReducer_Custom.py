@@ -1,13 +1,12 @@
 """
-【案例】自定义 Reducer：用函数签名 (current, update) -> 合并结果，解决 operator.mul 与 LangGraph 首次规约时
-current 为类型默认值 0.0 导致「乘以 0」的问题；在函数内把「第一次」当作乘以单位元 1.0 处理。
+【案例】自定义 Reducer：用函数签名 (current, update) -> 合并结果，解决 operator.mul 在首次规约边界上不适合直接用于乘法累计的问题。
 
-对应教程章节：第 23 章 - LangGraph API：图与状态 → 2、Graph API 之 State（状态）
+对应教程章节：第 23 章 - LangGraph API：图与状态 → 3、State 的更新机制：Reducer（规约函数）
 
 知识点速览：
-- Reducer 可写成普通函数：接收「当前字段值 current」与「本节点返回的增量 update」，返回值写回该字段。
-- LangGraph 在合并时可能会先用默认值参与一次规约（float 常为 0.0），因此乘法场景下要区分「尚未有有效旧值」与「旧值就是 0」等边界（本例用 current == 0.0 识别首次，与教程及 StateReducer_OperatorMul 思路一致）。
-- 节点仍只返回增量（如 {"factor": 2.0}），由 Reducer 决定如何与 state["factor"] 合并。
+- Reducer 可以写成普通函数：接收当前字段值 `current` 与本次更新值 `update`，返回新的合并结果。
+- 自定义 Reducer 的价值不在“语法复杂”，而在于你可以按业务语义处理首次合并、空值、重复值、顺序稳定性等边界。
+- 节点仍只返回增量（如 `{\"factor\": 2.0}`），真正决定怎么合并的是 Reducer，而不是节点本身。
 """
 
 from typing import Annotated
@@ -17,7 +16,7 @@ from typing_extensions import TypedDict
 
 
 def MyOperatorMul(current: float, update: float) -> float:
-    """自定义乘法 Reducer：首次规约时 current 常为 0.0，按乘法单位元 1.0 处理，再与 update 相乘。"""
+    """自定义乘法 Reducer：首次合并时把 current 的边界情况单独处理，再继续乘法累计。"""
     # 第一次调用时 current 往往是类型默认值 0.0，若直接 current * update 会得到 0，后续无法恢复
     if current == 0.0:
         print(f"current:{current}")
