@@ -2,7 +2,7 @@ import os
 import requests
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
-from langchain.agents import create_tool_calling_agent, AgentExecutor
+from langchain.agents import create_agent
 from langchain_core.prompts import ChatPromptTemplate
 
 # 1. 定义天气查询工具
@@ -29,19 +29,10 @@ llm = ChatOpenAI(
     temperature=0
 )
 
-# 3. 编写 Agent 的 Prompt 模板
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "你是一个得力的智能助手，你可以使用提供的工具来帮助用户解答问题。请使用中文回答。"),
-    ("human", "{input}"),
-    ("placeholder", "{agent_scratchpad}"), # 这个占位符用于存放 Agent 思考和工具调用的中间记录
-])
-
-# 4. 创建 Agent 以及 Executor
+# 4. 创建 Agent
 tools = [get_weather]
-# 将模型、工具和提示词组装成一个支持工具调用的 Agent
-agent = create_tool_calling_agent(llm, tools, prompt)
-# AgentExecutor 负责实际运行上面的 agent，处理重试、报错及解析输出（verbose=True 会在控制台打印思考过程）
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+# 使用 LangChain 的 create_agent 创建支持工具调用的 Agent
+agent_executor = create_agent(llm, tools)
 
 # 5. 运行和测试 Agent
 if __name__ == "__main__":
@@ -49,9 +40,10 @@ if __name__ == "__main__":
     
     question = "请帮我查一下上海和北京今天的天气分别怎么样？出门需要带伞吗？"
     
-    # 传入输入字典调用 agent
-    result = agent_executor.invoke({"input": question})
+    # 调用 agent
+    result = agent_executor.invoke({"messages": [("human", question)]})
     
     print("\n" + "="*40)
     print("最终回答：")
-    print(result["output"])
+    # LangGraph 返回的结果中，最后一条消息是 AI 的回复
+    print(result["messages"][-1].content)
