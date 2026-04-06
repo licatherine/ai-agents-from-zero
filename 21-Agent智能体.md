@@ -9,8 +9,6 @@
 - 理解 LangChain 中 Agent 的两条学习主线：**V0.3 / classic 的 Agent + AgentExecutor**，以及 **V1.x 的 `create_agent` + LangGraph 运行时**。
 - 跑通并理解本章全部案例：`AgentSmartSelectV0.3.py`、`AgentSmartSelectV1.0.py`、`AgentReact.py`、`Agent2Agent.py`、`McpClientAgent.py`。
 
-**前置知识建议：** 建议已经学习 [第 17 章 Tools 工具调用](17-Tools工具调用.md)、[第 19 章 RAG 检索增强生成](19-RAG检索增强生成.md)、[第 20 章 MCP 模型上下文协议](20-MCP模型上下文协议.md)。因为 Agent 本章本质上是在讲：**有了工具、检索和外部能力之后，谁来做决策与编排。**
-
 **学习建议：** 本章建议按 **“Agent 是什么 → Agent 和 Tool 的边界 → Agent 如何工作 → LangChain 中的两条实现路线 → 实操案例 → 与 RAG / MCP / Function Calling 的关系”** 的顺序学习。不要一开始就死记 API，先把“**Agent 是决策层，不是工具本身**”这件事想清楚，后面的 ReAct、AgentExecutor、create_agent、A2A 才不会乱。
 
 ---
@@ -553,6 +551,8 @@ Agent 的问题，往往不是“有没有报错”这么简单，而是：
 
 这是本章最后必须收口的一节，因为这些概念最容易混。
 
+> **术语约定：** 为和前文保持一致，本章这里写 **Function Calling** 是因为它在很多官方资料里仍然常见；如果你更习惯 [第 17 章](17-Tools工具调用.md) 的说法，也可以直接把它理解成 **Tool Calling 这层调用机制**。
+
 ### 6.1 一张总表先记住
 
 | 概念                 | 它解决什么问题                      | 一句话理解   |
@@ -584,9 +584,35 @@ Agent 的问题，往往不是“有没有报错”这么简单，而是：
 
 ---
 
+**章节思考题：**
+
+1. 为什么说 Agent 更像“决策层”，而不是“工具层”？
+
+   **答案：** 因为 Agent 的核心不是提供某个具体能力，而是决定下一步该做什么、要不要调工具、调完后是否继续推理。工具是手脚，Agent 是负责判断和调度的大脑。
+
+2. classic 路线和 `create_agent` 路线最大的学习价值差别是什么？
+
+   **答案：** classic 路线更适合理解 AgentExecutor、scratchpad、多步工具循环这些底层机制，也能帮助你读懂旧项目；`create_agent` 路线更贴近 LangChain 1.x 官方主线和现阶段实战开发。前者偏机制理解，后者偏直接落地。
+
+3. `response_format`、`checkpointer`、`thread_id` 在 1.x Agent 里分别解决什么问题？
+
+   **答案：** `response_format` 用来约束 Agent 最终输出结构，`checkpointer` 用来持久化线程状态，`thread_id` 用来标识并隔离不同对话线程。三者分别对应结果格式、状态保存和会话身份。
+
+4. 面对一个新需求时，你会如何判断它更适合用固定 LCEL 工作流，还是更适合交给 Agent 来自主决定步骤？
+
+   **答案：** 如果步骤固定、路径可预先定义、结果可控性要求高，我会优先用 LCEL 或工作流；如果任务需要根据上下文临场判断、动态选工具、路径不固定，我才会考虑 Agent。判断标准就是“流程是否确定”和“是否真的需要自主决策”。
+
+5. 如果你要设计一个可上线的最小 Agent，你会优先补哪些安全边界和工程能力，而不是只让它“能调工具”？
+
+   **答案：** 我会优先补权限控制、工具白名单、参数校验、人审或二次确认、超时重试、审计日志和状态持久化。一个能上线的 Agent，不是只会调工具，而是出了错也能被限制、追踪和恢复。
+
 **本章小结：**
 
-- **Agent** 是**决策层**，负责何时调哪个 [Tool](17-Tools工具调用.md)、如何组合多步；**Tool** 是**能力层**，只提供可调用函数。二者结合形成「推理 + 行动」的 ReAct 循环，由 **AgentExecutor**（或 V1.0 的 `create_agent`）驱动执行。
-- LangChain 中 Agent 从 V0.x 的多步组装演进到 V1.0 的 `create_agent` 一步创建，底层由 **LangGraph** 支撑；结合本节「Agent、Tool、Function Calling、RAG、MCP 的区别与联系」可更好把握智能体与工具链的定位。
+- **Agent 的核心定位是决策层**：它不是多几个 API，也不是多几个 Tool，而是让系统围绕目标去判断下一步做什么、要不要调工具、工具结果回来后是否继续。Tool 是能力层，Agent 是协调这些能力的执行与决策层。
+- **理解 Agent 最稳的办法，是把它放回 ReAct 循环里看**：观察问题、决定动作、调用工具、拿回观察结果、继续决策。这样再去看 classic 路线里的 scratchpad / AgentExecutor，以及 1.x 路线里的 `create_agent`，就不会只剩 API 记忆。
+- **LangChain 1.x 的主线要抓住三个工程点**：`response_format` 负责把最终输出结构化，`checkpointer` 负责线程状态持久化，`thread_id` 负责多轮对话和会话隔离。它们共同决定 Agent 能不能从“演示能跑”走向“系统可用”。
+- **什么时候不该上 Agent 也要明确**：如果步骤固定、路径稳定、可控性要求高，优先用 LCEL 或 Workflow；只有当任务真的需要动态选工具、临场分解步骤、边执行边调整时，Agent 才值得它带来的复杂度。
+- **可上线的 Agent，重点在边界而不只是能力**：工具白名单、参数校验、人审或二次确认、超时重试、日志与状态持久化，往往比“再多接几个 Tool”更重要。
+- 从掌握结果看，学完本章后，你至少应该：能用“**Agent = 决策层**”概括 Agent 的定位，并把它和 Tool、RAG、MCP、Workflow 分层理解；知道 LangChain Agent 的两条主线：**classic 路线** 和 **`create_agent` + LangGraph runtime 路线**；理解 `response_format`、`checkpointer`、`thread_id` 这些 1.x 时代很关键的工程化能力，并知道什么时候该用 Agent、什么时候不该用。
 
 **建议下一步：** 在本地依次运行 `AgentSmartSelectV0.3.py`、`AgentSmartSelectV1.0.py`、`AgentReact.py` 和 `Agent2Agent.py`，对照文档理解 [Tool](17-Tools工具调用.md)、Agent、AgentExecutor 的配合；若需进一步把外部能力接入 Agent，再回看 [第 20 章 MCP 模型上下文协议](20-MCP模型上下文协议.md) 中的 `McpClientAgent.py`，把本章和 MCP 主线串起来。链式固定流程与 Agent 的取舍可对照 [第 15 章 LCEL 与链式调用](15-LCEL与链式调用.md) 与本文 **1.4 Agent 的使用场景** 一节。

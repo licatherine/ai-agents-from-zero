@@ -8,8 +8,6 @@
 - 理清 **LangGraph、LangChain、Chain、Agent、Workflow** 之间的关系，知道什么时候该直接用 LangChain，什么时候应该上 LangGraph。
 - 掌握 LangGraph 入门最核心的四个概念：**State（状态）、Nodes（节点）、Edges（边）、Graph（图）**，并能按“定义状态 → 编写节点 → 连接边 → 编译 → 执行 → 可视化”的顺序跑通本章 3 个入门案例。
 
-**前置知识建议：** 建议先学习 [第 9 章 LangChain 概述与架构](9-LangChain概述与架构.md)、[第 10 章 LangChain 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)、[第 11 章 Model I/O 与模型接入](11-Model-I-O与模型接入.md)、[第 15 章 LCEL 与链式调用](15-LCEL与链式调用.md)、[第 21 章 Agent 智能体](21-Agent智能体.md)。如果你已经理解“Chain 更适合线性流程”“Agent 能动态决策但不一定足够可控”，这一章会更容易读进去。
-
 **学习建议：** 本章建议按 **“先理解 LangGraph 的定义和定位 → 再理解为什么需要图 → 再看它和 LangChain / Agent 的边界 → 再记住四个核心概念 → 最后按三个案例逐步上手”** 的顺序学习。第 22 章只负责建立全局认知和最小动手能力；**Graph API 中图和状态的细节**放在 [第 23 章](23-LangGraphAPI：图与状态.md)，**节点、边和高级控制**放在 [第 24 章](24-LangGraphAPI：节点、边与进阶.md)，**持久化、流式、子图、时间旅行**放在 [第 25 章](25-LangGraph高级特性.md)，**多智能体与 A2A** 放在 [第 26 章](26-LangGraph多智能体与A2A.md)。
 
 ---
@@ -373,11 +371,34 @@ print(graph.get_graph().print_ascii())
 
 ---
 
+**章节思考题：**
+
+1. 为什么 LangGraph 更适合表达“有状态、可分支、可循环”的流程？
+
+   **答案：** 因为 LangGraph 天生把状态和控制流放到图结构里表达，节点之间既能分支、也能回环，还能在多轮处理中不断更新 State。相比线性脚本，它更适合描述真实业务里的非线性流程。
+
+2. Graph API 和 Functional API 的差别主要体现在哪种表达方式上？
+
+   **答案：** Graph API 更像显式搭图，你要清楚定义 State、Node、Edge；Functional API 更像用函数式方式声明流程，表达更轻一些。前者更直观、可控，后者更接近代码式组合。
+
+3. LangGraph 最小落地五步里，`compile()` 为什么不能省？
+
+   **答案：** `compile()` 不能省，因为它会把你定义的图结构真正编译成可执行对象，并完成必要的校验和运行准备。没有这一步，你只是画好了图，还没有得到能运行的应用。
+
+4. 选一个你熟悉的业务流程，试着把它重新翻译成 LangGraph 里的 State、Node、Edge 结构。
+
+   **答案：** 例如工单处理流程可以这样翻译：State 放用户问题、分类结果、处理记录和最终答复；Node 包含分类、检索知识、调用工具、生成回复；Edge 根据分类结果决定走知识库分支还是人工升级分支。这样一来，原本口头上的业务流程就变成了可执行图。
+
+5. 如果有人问你“普通函数编排也能写流程，为什么还要 LangGraph”，你会如何用本章内容回答？
+
+   **答案：** 我会回答：普通函数编排当然也能写流程，但一旦出现状态累积、条件分支、循环重试、断点恢复和可视化调试，LangGraph 的优势就明显了。它不是为了替代所有函数，而是为了更清晰地表达复杂、长期运行的 AI 流程。
+
 **本章小结：**
 
 - **LangGraph 是低层图编排框架和运行时**，核心价值是把有状态、可分支、可循环、可人工介入的 LLM 流程写得更可控。
 - **LangChain 和 LangGraph 是配合关系**：LangChain 更擅长提供模型、Prompt、Tools、RAG、Agent 等组件和高层封装；LangGraph 更擅长做流程编排、状态管理、持久化、可观测和人机协作。
 - **Graph API 入门先记四个词**：State、Nodes、Edges、Graph；再记五步法：定义状态、写节点、连边、编译、执行。
 - **本章三个案例是递进关系**：`LangGraphHello.py` 先理解最小图，`LangGraphBiz.py` 理解业务状态流，`LangGraphLLM.py` 再把聊天模型和 `add_messages` 接进图里。
+- 从掌握结果看，学完本章后，你至少应该：能用“**图 + 状态**”概括 LangGraph 的核心思想，而不是把它理解成“把流程画出来”；知道 **Graph API** 和 **Functional API** 的区别，并理解为什么本教程先走 Graph API 主线；能记住 LangGraph 最小落地五步：**定义状态 → 写节点 → 连边 → 编译 → 执行**。
 
 **建议下一步：** 先在本地把 `案例与源码-3-LangGraph框架/01-helloworld` 这 3 个脚本都跑一遍，然后做两个小改造：给 `LangGraphBiz.py` 再加一个乘法节点；给 `LangGraphLLM.py` 多传一轮历史消息，观察 `messages` 列表是怎么增长的。做完之后，再进入 [第 23 章 - LangGraph API：图与状态](23-LangGraphAPI：图与状态.md)，系统学习 State Schema 和 Reducer。

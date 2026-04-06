@@ -9,8 +9,6 @@
 - 掌握 **TypedDict / Pydantic / dataclass** 这些 State Schema 写法、**state_schema / input_schema / output_schema** 的边界，以及 **默认覆盖、`add_messages`、`operator.add`、`operator.mul`、自定义 Reducer** 这些常见状态合并方式。
 - 能运行并理解本章全部案例，为后续 [第 24 章 LangGraph API：节点、边与进阶](24-LangGraphAPI：节点、边与进阶.md) 打基础。
 
-**前置知识建议：** 建议先学习 [第 22 章 LangGraph 概述与快速入门](22-LangGraph概述与快速入门.md)，至少已经跑通过 `LangGraphHello.py`、`LangGraphBiz.py`、`LangGraphLLM.py` 这 3 个入门案例，并且知道 **State、Nodes、Edges、Graph** 这四个词分别是什么意思。
-
 **学习建议：** 本章建议按 **“Graph 是什么 → 怎么构建一张完整图 → State 为什么是核心 → State Schema 怎么定义 → 输入/输出 Schema 怎么收口 → Reducer 怎么决定状态合并”** 的顺序学习。不要一上来死记所有 Reducer 名字，先把“**节点只返回局部更新，State 负责承载数据，Reducer 负责决定这些更新怎么合并回状态**”这件事想清楚，后面的 `add_messages`、`operator.add`、自定义 Reducer 才会真正串起来。
 
 ---
@@ -343,6 +341,28 @@ def my_reducer(current_value, update_value):
 
 ---
 
+**章节思考题：**
+
+1. 为什么说 State 是 LangGraph 的中心数据结构，而不只是普通参数容器？
+
+   **答案：** 因为 State 不只是把几个参数装在一起，它决定了图里每个节点读什么、写什么、哪些信息会被后续节点继承，以及冲突时如何合并。它实际上是整张图的数据契约中心。
+
+2. `state_schema`、`input_schema`、`output_schema` 三者为什么要分开设计？
+
+   **答案：** 因为输入、内部运行状态和最终输出面向的是不同对象：`input_schema` 约束外部调用者传什么，`state_schema` 管内部流转和累计，`output_schema` 决定最终对外暴露什么。分开设计能让图更稳定，也更容易演进。
+
+3. Reducer 真正决定的是什么，为什么它和字段业务语义强相关？
+
+   **答案：** Reducer 决定的是同一个字段在多次更新或并行汇合时如何合并，比如覆盖、追加还是自定义合并。它之所以和业务语义强相关，是因为“消息列表要追加”和“状态标记要覆盖”显然不是同一种合并规则。
+
+4. 如果你要为一个“多轮处理 + 中间状态累计 + 最终汇总输出”的图设计状态，你会如何划分字段和 Reducer？
+
+   **答案：** 我会把状态分成三类：输入类字段放原始请求，过程类字段放中间分类结果、检索片段、执行日志，输出类字段放最终结论；其中消息列表、候选结果这类可累计字段配追加型 Reducer，阶段标记、最终答案这类单值字段用覆盖型 Reducer。
+
+5. 当图越来越复杂时，你会如何判断哪些字段应该只留在内部 State，哪些字段才应该暴露到输入输出契约？
+
+   **答案：** 判断标准是：只为图内部协作服务、对外不需要暴露的字段就留在内部 State，比如调试日志、中间候选集；只有外部调用者真正要传入或拿走的字段，才放到输入输出契约里。这样可以减少耦合，也让接口更稳定。
+
 **本章小结：**
 
 - **Graph** 是可执行的有向工作流结构，`StateGraph` 负责构建图，`START` / `END` 定义入口出口，`compile()` 把构建器变成可运行图，`invoke()` 负责执行。
@@ -350,5 +370,6 @@ def my_reducer(current_value, update_value):
 - **State = Schema + Reducer**：Schema 定义字段结构，Reducer 定义字段更新怎么和旧状态合并；把两者放在一起看，才是完整的 State 设计。
 - **`state_schema`、`input_schema`、`output_schema` 要分清楚**：内部完整状态是一回事，对外输入输出契约是另一回事。
 - **Reducer 选择要跟业务语义对齐**：默认覆盖适合最新值，`add_messages` 适合消息历史，`operator.add` 适合拼接/累加，自定义 Reducer 适合更复杂的合并规则。
+- 从掌握结果看，学完本章后，你至少应该：能说清 **Graph、State、Schema、Reducer** 四层关系，知道它们不是同一层东西；知道 `state_schema`、`input_schema`、`output_schema` 各自负责什么边界；能根据字段语义选择默认覆盖、`add_messages`、`operator.add` 或自定义 Reducer。
 
 **建议下一步：** 先按顺序跑一遍 `BuildWholeGraphSummary.py`、`DefState.py`、`StateSchema.py` 和 `03-state/reducers` 目录下所有 Reducer 案例，然后自己做两个小练习：把 `BuildWholeGraphSummary.py` 的 `process_data` 改成用 `operator.add` 追加历史记录；把 `StateReducersMyChatBot.py` 再加一个 `latest_summary` 字段，用默认覆盖保存最新摘要。做完后进入 [第 24 章 - LangGraph API：节点、边与进阶](24-LangGraphAPI：节点、边与进阶.md)，继续学习节点、普通边、条件边和 `Command` / `Send` / `Runtime`。

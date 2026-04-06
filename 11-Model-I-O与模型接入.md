@@ -8,8 +8,6 @@
 - 理解 LangChain 的 **Model I/O** 模块：输入提示（Prompt）、调用模型（Model）、输出解析（Parser）三件套。
 - 掌握 LangChain 里最常见的**模型分类**、**标准化参数**、**返回值结构**，尤其是 Chat Model 与 `AIMessage`。
 
-**前置知识建议：** 已学习 [第 9 章 LangChain 概述与架构](9-LangChain概述与架构.md)、[第 10 章 LangChain 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)，至少已经跑通过一次 `invoke()` 调用，并对 `.env`、API Key、模型名、Base URL 这几项基础概念不陌生。
-
 **学习建议：** 如果说 [第 10 章](10-LangChain快速上手与HelloWorld.md) 解决的是“先把模型调通”，那么本章开始解决的是“**把模型调用这件事系统化**”。建议按 **Model I/O 定义 → 模型分类 → 参数与返回值 → 模型接入方式** 的顺序学习，并和 [第 13 章 提示词与消息模板](13-提示词与消息模板.md)、[第 14 章 输出解析器](14-输出解析器.md) 连起来看。
 
 ---
@@ -595,9 +593,32 @@ print(model.invoke("你是谁？").content)
 
 ---
 
+**章节思考题：**
+
+1. 用一句话说明 `Format → Predict → Parse` 在 Model I/O 里的分工。
+
+   **答案：** `Format` 负责把输入整理成模型能吃的消息格式，`Predict` 负责真正调用模型生成结果，`Parse` 负责把原始输出整理成程序更好使用的结构。
+
+2. “模型本身”“模型提供商”“LangChain 模型对象”为什么不能混为一谈？
+
+   **答案：** 因为“模型本身”是能力核心，“模型提供商”是对外提供访问的服务方，“LangChain 模型对象”是你在代码里操控它们的抽象接口。三者处在不同层，不分清就容易把能力、服务和代码封装混成一回事。
+
+3. 为什么 LangChain 聊天模型的返回值通常是 `AIMessage`，而不是普通字符串？
+
+   **答案：** 因为聊天模型返回的不只是正文文本，还可能包含角色、工具调用信息、token 用量和其他 metadata。`AIMessage` 能把这些结构化信息一起带回来，方便后续链路继续处理。
+
+4. 如果让你接入一个新的模型平台，你会从哪些维度判断是用统一入口接入，还是直接使用 provider 原生封装？
+
+   **答案：** 我会看这个平台是否已有成熟 provider 包、是否需要用到专有参数或特殊能力、团队后续是否可能切换模型，以及统一抽象能不能满足需求。能满足则优先统一入口，特殊能力很强时再考虑用 provider 原生封装。
+
+5. 当模型输出、metadata 或参数行为和预期不一致时，你会如何从调用入口一路排查到返回对象？
+
+   **答案：** 我会从输入格式是否正确开始，检查模型对象的初始化参数，再看实际返回的 `AIMessage` 内容、metadata 和使用量字段，最后再判断问题是出在请求参数、provider 差异，还是解析阶段对返回对象理解错了。
+
 **本章小结：**
 
 - **Model I/O** 是 LangChain 中最基础、最核心的一层，负责 **Format → Predict → Parse** 三步。其中本章重点讲的是 **Predict（模型调用）**：模型如何分类、如何配置参数、如何返回结果，以及如何把不同 provider 接进来。
 - 从课程和真实项目角度看，最值得重点掌握的是 **Chat Model**。它比传统 LLM 更适合多轮对话、消息结构、工具调用和 Agent 场景，返回结果通常是 **`AIMessage`**，最常用字段是 `content`、`response_metadata` 和 `usage_metadata`。
+- 从掌握结果看，学完本章后，你至少应该：能用 **Format → Predict → Parse** 这条主线理解 Model I/O 在 LangChain 里的位置；能分清 **模型本身、模型提供商、LangChain 模型对象** 三层概念，尤其是 `ChatOpenAI`、`init_chat_model(...)`、原生 provider 类之间的关系；知道为什么聊天模型返回的通常是 `AIMessage`，并能读懂 `content`、`response_metadata`、`usage_metadata` 这些常见字段。
 
 **建议下一步：** 先把本章的 `02-models_io` 目录按顺序跑一遍，推荐顺序是：`ModelIO_OpenAI.py` → `ModelIO_ChatOpenAI.py` → `ModelIO_Init_chat_model.py` → `ModelIO_Params.py` → `ModelIO_DeepSeek.py` → `ModelIO_Qwen.py`。跑完之后，再进入 [第 12 章 Ollama 本地部署与调用](12-Ollama本地部署与调用.md)、[第 13 章 提示词与消息模板](13-提示词与消息模板.md)、[第 14 章 输出解析器](14-输出解析器.md)，把本章中的 “模型接入” 和后续的 “输入组织”“输出解析” 串成完整闭环。
