@@ -4,10 +4,11 @@
 对应教程章节：第 26 章 - LangGraph 多智能体与 A2A → 1、A2A 协议与多智能体架构概览
 
 知识点速览：
-- 单智能体：一个模型 + 一组工具，由模型决定何时调工具；适合天气、翻译等单一领域助手。
-- create_agent 返回的可执行对象底层基于 LangGraph；type(agent) 可看到具体编译类型。
-- 工具函数需清晰 docstring，便于模型理解参数与用途；环境变量配置 API Key（如 aliQwen-api）。
-- 注释中保留 stream 示例：stream_mode 可取 messages / updates / values / custom，用于流式体验（需取消注释运行）。
+- 这是本章的“对照组”案例：先看单智能体已经能解决什么问题，再理解为什么某些场景并不需要一上来就拆成多智能体。
+- 单智能体：一个模型 + 一组工具，由模型决定何时调工具；适合单领域、小任务、统一入口的助手场景。
+- create_agent 返回的可执行对象底层仍基于 LangGraph；type(agent) 可帮助读者建立“高层 Agent 接口背后仍是图运行时”的认知。
+- 工具函数需清晰 docstring，便于模型理解参数与用途；本案例重点不是天气业务本身，而是“Agent + Tools”的最小闭环。
+- 注释中保留 stream 示例：stream_mode 可取 messages / updates / values / custom，用于和前面 LangGraph Streaming 主线衔接（需取消注释运行）。
 """
 
 import os
