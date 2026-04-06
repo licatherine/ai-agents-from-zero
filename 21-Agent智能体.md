@@ -182,7 +182,7 @@ from langchain.agents import create_agent
 
 这种方式的核心变化不是“Agent 不循环了”，而是：**很多原来要自己显式组装的部分，被封装进了更统一的运行时。**
 
-根据当前官方文档，`create_agent` 背后使用的是**基于 LangGraph 的 graph-based runtime**。里的 **graph-based runtime**，可以先简单理解成：**Agent 的执行过程不再只是“一次函数调用”，而是由一个基于状态流转的运行框架来驱动。**
+根据当前官方文档，`create_agent` 背后使用的是**基于 LangGraph 的 graph-based runtime**。这里的 **graph-based runtime**，可以先简单理解成：**Agent 的执行过程不再只是“一次函数调用”，而是由一个基于状态流转的运行框架来驱动。**
 
 你可以把它想成：
 
@@ -336,6 +336,14 @@ from langchain.agents import create_agent
 本教程里的 V1.0 案例保留了一个很有价值的知识点：**Agent 不一定只能返回自然语言，它也可以返回结构化结果。**这在实际项目里非常重要。因为很多时候我们不是只想“让模型说一段话”，而是希望它最终给出：JSON、TypedDict、Pydantic 对象、便于程序直接消费的字段结构。
 
 官方文档也把 `response_format` 作为 `create_agent` 的重点能力之一。所以你可以把这个能力理解成：**Agent 不只是会调用工具，它还可以把最终答案整理成程序更容易接收的格式。**
+
+在当前 1.x 文档语境里，`response_format` 常见有三种理解方式：
+
+- **直接传 schema 类型**：例如 `TypedDict`、Pydantic 模型，框架会按模型能力自动选择更合适的结构化输出策略。
+- **显式 `ProviderStrategy(schema)`**：当底层模型原生支持结构化输出时，更贴近 provider 原生能力。
+- **显式 `ToolStrategy(schema)`**：把结构化输出当成一次工具调用式约束，兼容性通常更好。
+
+对初学者来说，你先记住一句话就够了：**`response_format` 不是“把字符串转 JSON”的后处理，而是在 Agent 最终输出阶段，把“结果长什么样”提前约束清楚。**
 
 ### 4.4 checkpointer、thread_id 与短期记忆
 

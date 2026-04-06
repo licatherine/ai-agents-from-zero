@@ -10,7 +10,7 @@
 
 **前置知识建议：** 具备 Python 基础（环境、包管理、基本语法），并对大模型、API 调用有初步认识。若尚未学习，可先阅读 [第 1-1 章 大模型认知与工程概览](1-1-大模型认知与工程概览.md)；若你已经接触过 [Coze / Dify 平台](3-基于Coze&Dify平台的智能体开发.md)，本章会帮助你把“低代码平台的直觉”过渡到“代码框架的思维”。
 
-**学习建议：** 本章以“建立全局地图”为主，不要求你立刻记住所有 API。建议按 **定义与作用 → 定位 → 包与版本 → 核心模块 → 项目学习路径** 的顺序学习，把 LangChain 先看成一个“AI 应用编排层”。完成本章后，直接进入 [第 10 章 LangChain 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)，会更容易把抽象概念和代码实践连起来。需要说明的是：**截至 2026 年 3 月 30 日，LangChain 官方主线已经进入 1.x 时代**，本章会以官方 1.x 文档为主，同时兼顾课程里仍然会遇到的 0.x / 经典写法。
+**学习建议：** 本章以“建立全局地图”为主，不要求你立刻记住所有 API。建议按 **定义与作用 → 定位 → 包与版本 → 核心模块 → 项目学习路径** 的顺序学习，把 LangChain 先看成一个“AI 应用编排层”。完成本章后，直接进入 [第 10 章 LangChain 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)，会更容易把抽象概念和代码实践连起来。需要说明的是：**如今，LangChain 官方主线已经进入 1.x 时代**，本章会以官方 1.x 文档为主，同时兼顾课程里仍然会遇到的 0.x / 经典写法。
 
 ---
 
@@ -260,7 +260,7 @@ LangChain 的演进大致可以分成三个阶段来理解：
 
 - **2024 年 2 月**：LangGraph 开源发布
 - **2025 年 10 月 20 日**：LangChain 官方发布 **v1.0.0**
-- **截至 2026 年 3 月 30 日**：学习 LangChain 应以 **1.x 文档语境**为主
+- **现在**：学习 LangChain 应以 **1.x 文档语境**为主
 
 ### 3.2 当前官方产品线理解
 
@@ -273,8 +273,7 @@ LangChain 的演进大致可以分成三个阶段来理解：
 | **LangSmith**   | 可观测性、评估、调试、部署平台 | 用来追踪、调试、评估和上线应用                                       |
 | **Deep Agents** | “开箱即用”的复杂 Agent 方案    | 官方当前推荐的复杂 Agent 起步方案，建立在 LangChain / LangGraph 之上 |
 
-这和早期“LangChain = 一切”的印象已经不一样了。  
-根据截至 2026 年 3 月 30 日的官方 Overview 页面，官方当前的区分大致是：
+这和早期“LangChain = 一切”的印象已经不一样了。现在官方当前的区分大致是：
 
 - 想快速做 Agent：可以从 **LangChain** 入手
 - 想做更复杂、更可控的 Agentic Workflow：用 **LangGraph**
@@ -586,7 +585,7 @@ Model I/O 可以理解为“**围绕模型调用本身的一圈能力**”。它
 **本章小结：**
 
 - **LangChain** 不是大模型本身，而是位于 AI 应用架构中“**服务 / 编排层**”的开源框架，核心作用是把模型、Prompt、知识、工具、记忆、输出解析和调试能力组织成一个可维护的应用系统。它与 **Coze / Dify** 的关系不是替代，而是分工不同：前者偏代码框架，后者偏低代码平台；真实项目里常常先用平台验证，再用框架落地。
-- **截至 2026 年 3 月 30 日**，学习 LangChain 应以 **1.x 官方文档**为主线。要重点理解：`langchain` 主包已精简，很多旧能力迁移到了 `langchain-classic`；Agent 以 `create_agent` 为高层入口，底层建立在 **LangGraph** 之上；集成能力则通过 `langchain-openai`、`langchain-ollama` 等独立 provider 包扩展。
+- 2026年，学习 LangChain 应以 **1.x 官方文档**为主线。要重点理解：`langchain` 主包已精简，很多旧能力迁移到了 `langchain-classic`；Agent 以 `create_agent` 为高层入口，底层建立在 **LangGraph** 之上；集成能力则通过 `langchain-openai`、`langchain-ollama` 等独立 provider 包扩展。
 - 对初学者来说，最重要的不是一开始记住所有 API，而是先建立 **六块认知地图**：**Model I/O、Chains、Memory、Retrieval、Tools / Agents、Callbacks**。后续章节会按这张地图一块一块展开，并且已经在项目目录中配好了对应案例源码。
 
 **建议下一步：** 直接进入 [第 10 章 LangChain 快速上手与 HelloWorld](10-LangChain快速上手与HelloWorld.md)，先把 **API Key、模型名、Base URL、HelloWorld 调用、多模型共存、企业级封装与流式输出** 跑通。等你真正把第一个 LangChain 调用写出来，再回头看这一章的“定位、架构、模块”，理解会明显更扎实。
